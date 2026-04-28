@@ -297,26 +297,22 @@
   z-index: 998;
 }
 
-@media (max-width: 768px) {
-        .now-playing {
-        text-align: right;
-        right: 70px;
+    @media (max-width: 768px) {
+      .now-playing {
+        right: 60px;
       }
 
-    .now-playing .track span {
-    animation: marquee 14s linear infinite;
-  }
-  
-  .now-playing .track span {
-    padding-left: 0;
-    animation: none;
 
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: block;
-  }
-}
+      .now-playing .track span {
+        padding-left: 0;
+        animation: marquee 16s linear infinite;
+
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: block;
+      }
+    }
 
     .now-playing.active {
       opacity: 1;
