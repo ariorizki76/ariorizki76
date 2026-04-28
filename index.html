@@ -281,21 +281,17 @@
     }
 
     .now-playing {
-      position: fixed;
-      bottom: 80px;
-      right: 20px;
+  position: fixed;
+  bottom: 80px;
+  right: 50px;
+}
 
-      max-width: 200px;
-
-      font-size: 11px;
-      color: #888;
-
-      opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.4s ease;
-
-      z-index: 998;
-    }
+/* Mobile */
+@media (max-width: 768px) {
+  .now-playing {
+    right: 20px;
+  }
+}
 
     .now-playing.active {
       opacity: 1;
