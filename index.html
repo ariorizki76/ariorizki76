@@ -297,10 +297,15 @@
   z-index: 998;
 }
 
-/* Mobile */
 @media (max-width: 768px) {
-  .now-playing {
-    right: 8px; /* langsung fix aja biar pasti ke kanan */
+  .now-playing .track span {
+    padding-left: 0;
+    animation: none;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
   }
 }
 
