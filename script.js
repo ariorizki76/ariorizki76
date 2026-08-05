@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://XXXX.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1Ni...';
+const SUPABASE_URL = 'https://mklvshshxlqnawdqgumu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_9DLq4FnuySUEgje8y9Ba9w_PWV7Lnsy';
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function loadGalleryFromSupabase() {
