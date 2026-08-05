@@ -1,4 +1,30 @@
-   .template-foto {
+/* Styling Widget Cuaca */
+.weather-widget {
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.5s ease;
+}
+
+/* Overlay Suasana Hujan (Otomatis Aktif Saat Hujan) */
+body.rainy-mode::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.35); /* Tint redup syahdu */
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Efek Lampu Malam/Redup */
+body.night-mode .hero-content {
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.15));
+}
+
+.template-foto {
     position:absolute;
       bottom:10px;
       left:10px;
