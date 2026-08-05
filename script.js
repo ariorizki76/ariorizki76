@@ -153,69 +153,54 @@ document.getElementById("loveCounter").innerHTML =
     "it's been " + days + " days, since March 8, 2026.";
 
 
-document.addEventListener("DOMContentLoaded", function () {
+let updateGalleryItems; // Buat variabel global agar bisa dipanggil dari Supabase loader
 
+document.addEventListener("DOMContentLoaded", function () {
     const btn = document.getElementById('loadMoreBtn');
     const filters = document.querySelectorAll('.isotope-filters li');
 
     let currentFilter = '.filter-app';
     let visible = 3;
 
-    function updateItems() {
+    updateGalleryItems = function() {
         if (!window.iso) return;
 
         let count = 0;
 
         window.iso.arrange({
             filter: function (itemElem) {
-
-                // filter kategori
                 if (!itemElem.classList.contains(currentFilter.replace('.', ''))) {
                     return false;
                 }
-
-                // limit jumlah
                 if (count < visible) {
                     count++;
                     return true;
                 }
-
                 return false;
             }
         });
 
-        // hitung total kategori
         const total = document.querySelectorAll(currentFilter).length;
 
-        // tombol
         if (visible >= total) {
             btn.style.display = 'none';
         } else {
             btn.style.display = 'inline-block';
         }
-    }
+    };
 
-    // INIT (nunggu isotope siap)
-    setTimeout(updateItems, 200);
-
-    // LOAD MORE
     btn.addEventListener('click', function () {
         visible += 3;
-        updateItems();
+        updateGalleryItems();
     });
 
-    // FILTER CLICK (override template)
     filters.forEach(filter => {
         filter.addEventListener('click', function () {
-
             currentFilter = this.getAttribute('data-filter');
             visible = 3;
-
-            // delay dikit biar template selesai dulu
-            setTimeout(updateItems, 50);
+            setTimeout(updateGalleryItems, 50);
         });
     });
-
 });
 
 const lightbox = GLightbox({
@@ -357,7 +342,6 @@ async function loadGalleryFromSupabase() {
   const container = document.querySelector('.isotope-container');
   if (!container) return;
 
-  // Gunakan 'supabaseClient' di sini
   const { data: galleryItems, error } = await supabaseClient
     .from('gallery')
     .select('*')
@@ -372,7 +356,6 @@ async function loadGalleryFromSupabase() {
     let itemHtml = '';
 
     if (item.type === 'filter-branding') {
-      // 1. RENDER KARTU VIDEO
       itemHtml = `
         <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-branding gallery-item">
           <div class="portfolio-content h-100 position-relative">
@@ -393,13 +376,11 @@ async function loadGalleryFromSupabase() {
         </div>
       `;
     } else {
-      // 2. RENDER KARTU PHOTOS / FLOWERS
       const galleryGroup = `db_gallery_${item.id}`;
       const photoCount = item.images.length;
       const templateClass = item.type === 'filter-app' ? 'template-foto' : 'template-bunga';
       const captionText = `${item.title_date} • ${photoCount} Photos`;
 
-      // Buat elemen <a> tersembunyi untuk foto ke-2, ke-3, dst.
       let hiddenLinksHtml = '';
       for (let i = 1; i < item.images.length; i++) {
         hiddenLinksHtml += `
@@ -426,21 +407,34 @@ async function loadGalleryFromSupabase() {
       `;
     }
 
-    // Sisipkan item ke container
     container.insertAdjacentHTML('afterbegin', itemHtml);
   });
 
-  // Re-initialize Isotope & GLightbox
-  if (window.imagesLoaded) {
-    imagesLoaded(container, function () {
-      if (window.GLightbox) GLightbox({ selector: '.glightbox' });
-      const isotopeInstance = Isotope.data(container);
-      if (isotopeInstance) {
-        isotopeInstance.reloadItems();
-        isotopeInstance.layout();
+  // ✅ PERBAIKAN: Pastikan SEMUA gambar selesai di-load sebelum Isotope & Lightbox dihitung ulang
+  imagesLoaded(container, function () {
+    // 1. Inisialisasi / Re-layout Isotope
+    if (typeof Isotope !== 'undefined') {
+      if (!window.iso) {
+        window.iso = new Isotope(container, {
+          itemSelector: '.portfolio-item',
+          layoutMode: 'masonry'
+        });
+      } else {
+        window.iso.reloadItems();
+        window.iso.layout();
       }
-    });
-  }
+    }
+
+    // 2. Inisialisasi ulang GLightbox
+    if (typeof GLightbox !== 'undefined') {
+      GLightbox({ selector: '.glightbox' });
+    }
+
+    // 3. Panggil updateItems agar filter & load more berjalan normal
+    if (typeof updateGalleryItems === 'function') {
+      updateGalleryItems();
+    }
+  });
 }
 
 // Jalankan saat dokumen siap
