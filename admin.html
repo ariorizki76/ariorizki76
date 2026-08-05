@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Upload — Quiet Archive</title>
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-dark text-white p-4">
+
+  <div class="container my-5" style="max-width: 500px;">
+    <h3 class="mb-4 text-center">Upload Kenangan Baru ✨</h3>
+    
+    <form id="uploadForm">
+      <div class="mb-3">
+        <label class="form-label">Kategori</label>
+        <select id="category" class="form-select bg-dark text-white" required>
+          <option value="filter-app">Photos</option>
+          <option value="filter-product">Flowers</option>
+          <option value="filter-branding">Videos</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Tanggal Kenangan</label>
+        <input type="text" id="titleDate" class="form-control bg-dark text-white" placeholder="Contoh: Kamis, 28 Mei 2026" required>
+      </div>
+
+      <!-- Input untuk Foto & Bunga (Bisa pilih banyak foto) -->
+      <div class="mb-3" id="photoInputGroup">
+        <label class="form-label">Pilih Foto (Bisa pilih sekaligus banyak)</label>
+        <input type="file" id="fileInput" class="form-control bg-dark text-white" accept="image/*" multiple>
+        <small class="text-secondary">*Foto pertama akan jadi Thumbnail depan.</small>
+      </div>
+
+      <!-- Input untuk Video (YouTube) -->
+      <div class="mb-3 d-none" id="videoInputGroup">
+        <label class="form-label">Link / ID Video YouTube</label>
+        <input type="text" id="youtubeInput" class="form-control bg-dark text-white" placeholder="https://www.youtube.com/watch?v=j4WCU8UFEas atau j4WCU8UFEas">
+      </div>
+
+      <button type="submit" id="btnSubmit" class="btn btn-light w-100 mt-3">Simpan ke Web</button>
+    </form>
+    
+    <div id="statusMsg" class="mt-3 text-center"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://XXXX.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1Ni...';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const categorySelect = document.getElementById('category');
+    const photoGroup = document.getElementById('photoInputGroup');
+    const videoGroup = document.getElementById('videoInputGroup');
+
+    // Toggle Tampilan Input berdasarkan Kategori
+    categorySelect.addEventListener('change', () => {
+      if (categorySelect.value === 'filter-branding') {
+        photoGroup.classList.add('d-none');
+        videoGroup.classList.remove('d-none');
+      } else {
+        photoGroup.classList.remove('d-none');
+        videoGroup.classList.add('d-none');
+      }
+    });
+
+    // Fungsi Ekstrak ID YouTube dari Link
+    function extractYoutubeId(url) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : url;
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmit');
+      const statusMsg = document.getElementById('statusMsg');
+      
+      btn.disabled = true;
+      statusMsg.textContent = 'Sedang memproses... ⏳';
+
+      try {
+        const category = categorySelect.value;
+        const titleDate = document.getElementById('titleDate').value;
+
+        if (category === 'filter-branding') {
+          // PROSES VIDEO
+          const ytInput = document.getElementById('youtubeInput').value;
+          const youtubeId = extractYoutubeId(ytInput);
+
+          const { error } = await supabase.from('gallery').insert([{
+            type: category,
+            title_date: titleDate,
+            youtube_id: youtubeId,
+            images: []
+          }]);
+
+          if (error) throw error;
+        } else {
+          // PROSES FOTO / BUNGA (MULTI-UPLOAD)
+          const files = Array.from(document.getElementById('fileInput').files);
+          if (files.length === 0) throw new Error('Pilih minimal 1 foto!');
+
+          const imageUrls = [];
+
+          for (let file of files) {
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name}`;
+            const { error: storageError } = await supabase.storage
+              .from('photos')
+              .upload(fileName, file);
+
+            if (storageError) throw storageError;
+
+            const { data: urlData } = supabase.storage
+              .from('photos')
+              .getPublicUrl(fileName);
+
+            imageUrls.push(urlData.publicUrl);
+          }
+
+          const { error } = await supabase.from('gallery').insert([{
+            type: category,
+            title_date: titleDate,
+            images: imageUrls,
+            youtube_id: null
+          }]);
+
+          if (error) throw error;
+        }
+
+        statusMsg.textContent = 'Berhasil diupload ke database! 🎉';
+        document.getElementById('uploadForm').reset();
+      } catch (err) {
+        console.error(err);
+        statusMsg.textContent = 'Gagal: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
