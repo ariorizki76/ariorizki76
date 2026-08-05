@@ -1,3 +1,100 @@
+const SUPABASE_URL = 'https://XXXX.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1Ni...';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function loadGalleryFromSupabase() {
+  const container = document.querySelector('.isotope-container');
+  if (!container) return;
+
+  const { data: galleryItems, error } = await supabase
+    .from('gallery')
+    .select('*')
+    .order('id', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching gallery:', error);
+    return;
+  }
+
+  galleryItems.forEach((item) => {
+    let itemHtml = '';
+
+    if (item.type === 'filter-branding') {
+      // 1. RENDER KARTU VIDEO
+      itemHtml = `
+        <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-branding gallery-item">
+          <div class="portfolio-content h-100 position-relative">
+            <img src="https://img.youtube.com/vi/${item.youtube_id}/hqdefault.jpg" class="img-fluid" loading="lazy"
+              decoding="async" style="border-radius:10px; width:100%; height:300px; object-fit:cover;" alt="">
+            <a href="https://www.youtube.com/embed/${item.youtube_id}" class="glightbox" data-type="video"
+              style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:5;">
+            </a>
+            <div class="position-absolute top-50 start-50 translate-middle" style="pointer-events:none;">
+              <i class="bi bi-play-circle-fill"
+                style="font-size:50px; color:white; text-shadow:0 0 10px rgba(0,0,0,0.6);">
+              </i>
+            </div>
+            <div class="template-video">
+              ${item.title_date}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      // 2. RENDER KARTU PHOTOS / FLOWERS
+      const galleryGroup = `db_gallery_${item.id}`;
+      const photoCount = item.images.length;
+      const templateClass = item.type === 'filter-app' ? 'template-foto' : 'template-bunga';
+      const captionText = `${item.title_date} • ${photoCount} Photos`;
+
+      // Buat elemen <a> tersembunyi untuk foto ke-2, ke-3, dst.
+      let hiddenLinksHtml = '';
+      for (let i = 1; i < item.images.length; i++) {
+        hiddenLinksHtml += `
+          <a href="${item.images[i]}" data-glightbox="title: ${captionText}"
+            class="glightbox d-none" data-gallery="${galleryGroup}"></a>
+        `;
+      }
+
+      itemHtml = `
+        <div class="col-lg-4 col-md-6 portfolio-item isotope-item ${item.type} gallery-item">
+          <div class="portfolio-content h-100">
+            <img src="${item.images[0]}" class="img-fluid" loading="lazy" decoding="async"
+              style="border-radius:10px; width:100%; height:300px; object-fit:cover;" alt="">
+            <div class="portfolio-info">
+              <a href="${item.images[0]}" data-glightbox="title: ${captionText}"
+                data-gallery="${galleryGroup}" class="glightbox preview-link"><i class="bi bi-zoom-in"></i></a>
+              ${hiddenLinksHtml}
+            </div>
+            <div class="${templateClass}">
+              ${item.title_date}&nbsp;&nbsp;•&nbsp;&nbsp;${photoCount} Photos
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Sisipkan item ke container
+    container.insertAdjacentHTML('afterbegin', itemHtml);
+  });
+
+  // Re-initialize Isotope & GLightbox agar layout masonry & popup berjalan sempurna
+  if (window.imagesLoaded) {
+    imagesLoaded(container, function () {
+      if (window.GLightbox) GLightbox({ selector: '.glightbox' });
+      // Refresh Isotope layout jika Isotope sudah di-init
+      const isotopeInstance = Isotope.data(container);
+      if (isotopeInstance) {
+        isotopeInstance.reloadItems();
+        isotopeInstance.layout();
+      }
+    });
+  }
+}
+
+// Jalankan saat dokumen siap
+document.addEventListener('DOMContentLoaded', loadGalleryFromSupabase);
+
 
 const music = document.getElementById("bgMusic");
 const titleEl = document.getElementById("songTitle");
