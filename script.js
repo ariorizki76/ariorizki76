@@ -282,3 +282,62 @@ async function initWeatherAmbient() {
 document.addEventListener("DOMContentLoaded", initWeatherAmbient);
 
 
+document.addEventListener("DOMContentLoaded", () => {
+  const cards = document.querySelectorAll(".polaroid-card");
+  let highestZIndex = 20;
+
+  cards.forEach((card) => {
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    const onStart = (e) => {
+      isDragging = true;
+      highestZIndex++;
+      card.style.zIndex = highestZIndex; // Buat foto yang diklik berada paling depan
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      startX = clientX - card.offsetLeft;
+      startY = clientY - card.offsetTop;
+    };
+
+    const onMove = (e) => {
+      if (!isDragging) return;
+      
+      // Cegah scroll saat di-drag di layar sentuh
+      if (e.cancelable) e.preventDefault();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      let newLeft = clientX - startX;
+      let newTop = clientY - startY;
+
+      // Batasi pergerakan agar tidak terlempar terlalu jauh dari meja
+      const container = card.parentElement;
+      const maxLeft = container.clientWidth - (card.offsetWidth / 2);
+      const maxTop = container.clientHeight - (card.offsetHeight / 2);
+
+      newLeft = Math.max(-card.offsetWidth / 2, Math.min(newLeft, maxLeft));
+      newTop = Math.max(-card.offsetHeight / 2, Math.min(newTop, maxTop));
+
+      card.style.left = `${newLeft}px`;
+      card.style.top = `${newTop}px`;
+    };
+
+    const onEnd = () => {
+      isDragging = false;
+    };
+
+    // Event Mouse Desktop
+    card.addEventListener("mousedown", onStart);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onEnd);
+
+    // Event Touchscreen Mobile
+    card.addEventListener("touchstart", onStart, { passive: false });
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+  });
+});
