@@ -227,4 +227,58 @@ const lightbox = GLightbox({
     height: '90vh'
 });
 
+// Koordinat Kota Kalian (Contoh: Subang / Jakarta)
+// Bisa ganti latitude & longitude sesuai koordinat domisili kalian
+const LATITUDE = -6.5683;  
+const LONGITUDE = 107.7600; 
+
+async function initWeatherAmbient() {
+  const iconEl = document.getElementById("weatherIcon");
+  const textEl = document.getElementById("weatherText");
+
+  try {
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${LATITUDE}&longitude=${LONGITUDE}&current_weather=true`
+    );
+    const data = await response.json();
+    const weather = data.current_weather;
+    
+    const code = weather.weathercode;
+    const temp = Math.round(weather.temperature);
+    const isNight = weather.is_day === 0;
+
+    // Interpretasi Kode WMO Open-Meteo
+    let condition = "Cerah";
+    let iconClass = isNight ? "bi-moon-stars" : "bi-sun";
+
+    if (code >= 1 && code <= 3) {
+      condition = "Berawan";
+      iconClass = isNight ? "bi-cloud-moon" : "bi-cloud-sun";
+    } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+      condition = "Gerimis Hujan";
+      iconClass = "bi-cloud-drizzle";
+      document.body.classList.add("rainy-mode"); // Aktifkan mood hujan
+    } else if (code >= 95) {
+      condition = "Hujan Badai";
+      iconClass = "bi-cloud-lightning-rain";
+      document.body.classList.add("rainy-mode");
+    }
+
+    if (isNight) {
+      document.body.classList.add("night-mode");
+    }
+
+    // Tampilkan Text & Icon
+    iconEl.className = `bi ${iconClass} me-1`;
+    textEl.textContent = `Subang • ${temp}°C, ${condition}`;
+
+  } catch (error) {
+    console.error("Gagal memuat cuaca:", error);
+    textEl.textContent = "Suasana hangat menyelimuti";
+  }
+}
+
+// Jalankan saat halaman dimuat
+document.addEventListener("DOMContentLoaded", initWeatherAmbient);
+
 
