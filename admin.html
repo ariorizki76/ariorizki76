@@ -21,9 +21,10 @@
         </select>
       </div>
 
+      <!-- INPUT TANGGAL (DATEPICKER) -->
       <div class="mb-3">
         <label class="form-label">Tanggal Kenangan</label>
-        <input type="text" id="titleDate" class="form-control bg-dark text-white" placeholder="Contoh: Kamis, 28 Mei 2026" required>
+        <input type="date" id="datePicker" class="form-control bg-dark text-white" style="color-scheme: dark;" required>
       </div>
 
       <!-- Input untuk Foto & Bunga (Bisa pilih banyak foto) -->
@@ -65,6 +66,18 @@
       }
     });
 
+    // Fungsi Mengubah YYYY-MM-DD menjadi "Hari, Tgl Bulan Tahun" (Contoh: Kamis, 28 Mei 2026)
+    function formatDateToIndonesian(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    }
+
     // Fungsi Ekstrak ID YouTube dari Link
     function extractYoutubeId(url) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -82,7 +95,10 @@
 
       try {
         const category = categorySelect.value;
-        const titleDate = document.getElementById('titleDate').value;
+        const rawDate = document.getElementById('datePicker').value;
+        
+        // Konversi tanggal dari datepicker ke format teks Indonesia
+        const titleDate = formatDateToIndonesian(rawDate);
 
         if (category === 'filter-branding') {
           // PROSES VIDEO
