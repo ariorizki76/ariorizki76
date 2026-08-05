@@ -46,114 +46,114 @@
     <div id="statusMsg" class="mt-3 text-center"></div>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://mklvshshxlqnawdqgumu.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_9DLq4FnuySUEgje8y9Ba9w_PWV7Lnsy';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ <script>
+  const SUPABASE_URL = 'https://mklvshshxlqnawdqgumu.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_9DLq4FnuySUEgje8y9Ba9w_PWV7Lnsy';
+  
+  // ✅ Ubah nama variabel penampung menjadi 'supabaseClient'
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const categorySelect = document.getElementById('category');
-    const photoGroup = document.getElementById('photoInputGroup');
-    const videoGroup = document.getElementById('videoInputGroup');
+  const categorySelect = document.getElementById('category');
+  const photoGroup = document.getElementById('photoInputGroup');
+  const videoGroup = document.getElementById('videoInputGroup');
 
-    // Toggle Tampilan Input berdasarkan Kategori
-    categorySelect.addEventListener('change', () => {
-      if (categorySelect.value === 'filter-branding') {
-        photoGroup.classList.add('d-none');
-        videoGroup.classList.remove('d-none');
-      } else {
-        photoGroup.classList.remove('d-none');
-        videoGroup.classList.add('d-none');
-      }
+  // Toggle Tampilan Input
+  categorySelect.addEventListener('change', () => {
+    if (categorySelect.value === 'filter-branding') {
+      photoGroup.classList.add('d-none');
+      videoGroup.classList.remove('d-none');
+    } else {
+      photoGroup.classList.remove('d-none');
+      videoGroup.classList.add('d-none');
+    }
+  });
+
+  // Format Tanggal
+  function formatDateToIndonesian(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     });
+  }
 
-    // Fungsi Mengubah YYYY-MM-DD menjadi "Hari, Tgl Bulan Tahun" (Contoh: Kamis, 28 Mei 2026)
-    function formatDateToIndonesian(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString + 'T00:00:00');
-      return date.toLocaleDateString('id-ID', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-    }
+  // Ekstrak ID YouTube
+  function extractYoutubeId(url) {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : url;
+  }
 
-    // Fungsi Ekstrak ID YouTube dari Link
-    function extractYoutubeId(url) {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      return (match && match[2].length === 11) ? match[2] : url;
-    }
+  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmit');
+    const statusMsg = document.getElementById('statusMsg');
+    
+    btn.disabled = true;
+    statusMsg.textContent = 'Sedang memproses... ⏳';
 
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btnSubmit');
-      const statusMsg = document.getElementById('statusMsg');
-      
-      btn.disabled = true;
-      statusMsg.textContent = 'Sedang memproses... ⏳';
+    try {
+      const category = categorySelect.value;
+      const rawDate = document.getElementById('datePicker').value;
+      const titleDate = formatDateToIndonesian(rawDate);
 
-      try {
-        const category = categorySelect.value;
-        const rawDate = document.getElementById('datePicker').value;
-        
-        // Konversi tanggal dari datepicker ke format teks Indonesia
-        const titleDate = formatDateToIndonesian(rawDate);
+      if (category === 'filter-branding') {
+        // PROSES VIDEO
+        const ytInput = document.getElementById('youtubeInput').value;
+        const youtubeId = extractYoutubeId(ytInput);
 
-        if (category === 'filter-branding') {
-          // PROSES VIDEO
-          const ytInput = document.getElementById('youtubeInput').value;
-          const youtubeId = extractYoutubeId(ytInput);
+        const { error } = await supabaseClient.from('gallery').insert([{
+          type: category,
+          title_date: titleDate,
+          youtube_id: youtubeId,
+          images: []
+        }]);
 
-          const { error } = await supabase.from('gallery').insert([{
-            type: category,
-            title_date: titleDate,
-            youtube_id: youtubeId,
-            images: []
-          }]);
+        if (error) throw error;
+      } else {
+        // PROSES FOTO / BUNGA
+        const files = Array.from(document.getElementById('fileInput').files);
+        if (files.length === 0) throw new Error('Pilih minimal 1 foto!');
 
-          if (error) throw error;
-        } else {
-          // PROSES FOTO / BUNGA (MULTI-UPLOAD)
-          const files = Array.from(document.getElementById('fileInput').files);
-          if (files.length === 0) throw new Error('Pilih minimal 1 foto!');
+        const imageUrls = [];
 
-          const imageUrls = [];
+        for (let file of files) {
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name}`;
+          const { error: storageError } = await supabaseClient.storage
+            .from('photos')
+            .upload(fileName, file);
 
-          for (let file of files) {
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name}`;
-            const { error: storageError } = await supabase.storage
-              .from('photos')
-              .upload(fileName, file);
+          if (storageError) throw storageError;
 
-            if (storageError) throw storageError;
+          const { data: urlData } = supabaseClient.storage
+            .from('photos')
+            .getPublicUrl(fileName);
 
-            const { data: urlData } = supabase.storage
-              .from('photos')
-              .getPublicUrl(fileName);
-
-            imageUrls.push(urlData.publicUrl);
-          }
-
-          const { error } = await supabase.from('gallery').insert([{
-            type: category,
-            title_date: titleDate,
-            images: imageUrls,
-            youtube_id: null
-          }]);
-
-          if (error) throw error;
+          imageUrls.push(urlData.publicUrl);
         }
 
-        statusMsg.textContent = 'Berhasil diupload ke database! 🎉';
-        document.getElementById('uploadForm').reset();
-      } catch (err) {
-        console.error(err);
-        statusMsg.textContent = 'Gagal: ' + err.message;
-      } finally {
-        btn.disabled = false;
+        const { error } = await supabaseClient.from('gallery').insert([{
+          type: category,
+          title_date: titleDate,
+          images: imageUrls,
+          youtube_id: null
+        }]);
+
+        if (error) throw error;
       }
-    });
-  </script>
+
+      statusMsg.textContent = 'Berhasil diupload ke database! 🎉';
+      document.getElementById('uploadForm').reset();
+    } catch (err) {
+      console.error(err);
+      statusMsg.textContent = 'Gagal: ' + err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
 </body>
 </html>
