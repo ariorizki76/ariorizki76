@@ -344,15 +344,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ==========================================
+// SUPABASE CONFIG & GALLERY LOAD
+// ==========================================
 const SUPABASE_URL = 'https://mklvshshxlqnawdqgumu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_9DLq4FnuySUEgje8y9Ba9w_PWV7Lnsy';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ✅ Ganti nama variabel penampung menjadi 'supabaseClient' (agar tidak bentrok dengan library 'supabase')
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function loadGalleryFromSupabase() {
   const container = document.querySelector('.isotope-container');
   if (!container) return;
 
-  const { data: galleryItems, error } = await supabase
+  // Gunakan 'supabaseClient' di sini
+  const { data: galleryItems, error } = await supabaseClient
     .from('gallery')
     .select('*')
     .order('id', { ascending: false });
@@ -424,11 +430,10 @@ async function loadGalleryFromSupabase() {
     container.insertAdjacentHTML('afterbegin', itemHtml);
   });
 
-  // Re-initialize Isotope & GLightbox agar layout masonry & popup berjalan sempurna
+  // Re-initialize Isotope & GLightbox
   if (window.imagesLoaded) {
     imagesLoaded(container, function () {
       if (window.GLightbox) GLightbox({ selector: '.glightbox' });
-      // Refresh Isotope layout jika Isotope sudah di-init
       const isotopeInstance = Isotope.data(container);
       if (isotopeInstance) {
         isotopeInstance.reloadItems();
