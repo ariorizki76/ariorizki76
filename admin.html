@@ -200,7 +200,7 @@
     <div class="admin-card">
       <div class="admin-heading">
         <i class="bi bi-cloud-upload"></i>
-        <span>Upload Kenangan Baru</span>
+        <span>Upload Galeri Baru</span>
       </div>
 
       <form id="uploadForm">
@@ -380,7 +380,7 @@
     const statusMsg = document.getElementById('statusMsg');
     
     btn.disabled = true;
-    statusMsg.className = 'mt-3 text-center text-warning';
+    statusMsg.className = 'mt-3 text-center text-white';
     statusMsg.textContent = 'Sedang memproses... ⏳';
 
     try {
@@ -448,8 +448,8 @@
         if (error) throw error;
       }
 
-      statusMsg.className = 'mt-3 text-center text-success';
-      statusMsg.textContent = 'Berhasil diupload ke database! 🎉';
+      statusMsg.className = 'mt-3 text-center text-white';
+      statusMsg.textContent = 'Yeayy! berhasil diupload! 🎉';
       document.getElementById('uploadForm').reset();
       
       // Reset state input required
