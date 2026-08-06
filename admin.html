@@ -33,7 +33,7 @@
       <div class="mb-3" id="photoInputGroup">
         <label for="fileInput" class="form-label">Pilih Foto (Bisa pilih sekaligus banyak)</label>
         <input type="file" id="fileInput" class="form-control bg-dark text-white" accept="image/*" multiple required>
-        <small class="text-secondary d-block mt-1">* Foto pertama akan jadi Thumbnail depan. Maks 5MB/file.</small>
+        <small class="text-secondary d-block mt-1">* Foto pertama akan jadi Thumbnail depan. Maks 5MB/file. Foto otomatis dikompres sebelum diupload biar web-nya tetap ringan.</small>
       </div>
 
       <!-- INPUT VIDEO (YOUTUBE) -->
@@ -99,6 +99,69 @@
     });
   }
 
+  // ==========================================
+  // KOMPRES FOTO SEBELUM UPLOAD
+  // ==========================================
+  // Resize ke max lebar 1600px + convert ke JPEG kualitas 0.82.
+  // Tujuannya biar file yang naik ke Storage (dan didownload tiap
+  // orang buka galeri) jauh lebih kecil dari foto asli HP (bisa 3-8MB).
+  const COMPRESS_MAX_WIDTH = 1600;
+  const COMPRESS_QUALITY = 0.82;
+
+  function compressImage(file, maxWidth = COMPRESS_MAX_WIDTH, quality = COMPRESS_QUALITY) {
+    return new Promise((resolve) => {
+      // GIF (animasi) jangan dikompres, biar animasinya gak hilang
+      if (file.type === 'image/gif') {
+        resolve(file);
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+
+        let { width, height } = img;
+
+        if (width > maxWidth) {
+          height = Math.round(height * (maxWidth / width));
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            // Kalau gagal compress, tetap lanjut upload file aslinya
+            resolve(file);
+            return;
+          }
+
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^.]+$/, '.jpg'),
+            { type: 'image/jpeg' }
+          );
+          resolve(compressedFile);
+        }, 'image/jpeg', quality);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        // Kalau gambarnya gagal dibaca, tetap lanjut upload file aslinya
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    });
+  }
+
   // Ekstrak ID YouTube yang Lebih Valid & Aman
   function extractYoutubeId(url) {
     if (!url) return null;
@@ -153,17 +216,20 @@
         const imageUrls = [];
 
         for (let file of files) {
-          // Validasi Ukuran File (Maksimal 5MB)
+          // Validasi Ukuran File (Maksimal 5MB) — dicek dari file asli sebelum dikompres
           if (file.size > 5 * 1024 * 1024) {
             throw new Error(`File ${file.name} terlalu besar (maksimal 5MB)!`);
           }
 
-          const fileExt = file.name.split('.').pop();
+          statusMsg.textContent = `Mengompres ${file.name}... ⏳`;
+          const uploadFile = await compressImage(file);
+
+          const fileExt = uploadFile.name.split('.').pop();
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
           
           const { error: storageError } = await supabaseClient.storage
             .from('photos')
-            .upload(fileName, file);
+            .upload(fileName, uploadFile);
 
           if (storageError) throw storageError;
 
