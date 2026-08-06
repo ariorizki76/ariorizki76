@@ -430,9 +430,9 @@
 
         <!-- INPUT FOTO / BUNGA -->
         <div class="mb-3" id="photoInputGroup">
-          <label for="fileInput" class="form-label"><i class="bi bi-images"></i> Pilih Foto (Bisa pilih sekaligus banyak)</label>
+          <label for="fileInput" class="form-label"><i class="bi bi-images"></i> Pilih Foto (Bisa pilih banyak sekaligus)</label>
           <input type="file" id="fileInput" class="form-control" accept="image/*" multiple required>
-          <small class="text-secondary d-block mt-1">* Klik salah satu foto di bawah untuk menandainya sebagai Thumbnail depan (ditandai ⭐). Maks 5MB/file. Foto otomatis dikompres sebelum diupload biar web-nya tetap ringan.</small>
+          <small class="text-secondary d-block mt-1">* Klik salah satu foto di bawah untuk menandainya sebagai Thumbnail depan (ditandai ⭐). Maks 5MB/file.</small>
           <div id="photoPreviewGrid" class="photo-preview-grid d-none"></div>
         </div>
 
@@ -444,7 +444,7 @@
         </div>
 
         <button type="submit" id="btnSubmit" class="btn btn-save w-100 mt-3">
-          <i class="bi bi-check2-circle me-1"></i> Simpan ke Web
+          <i class="bi bi-check2-circle me-1"></i> Simpan
         </button>
       </form>
     </div>
@@ -453,7 +453,7 @@
     <div class="admin-card">
       <div class="admin-heading">
         <i class="bi bi-collection"></i>
-        <span>Kelola Kenangan yang Sudah Ada</span>
+        <span>Kelola Galeri</span>
       </div>
 
       <div class="admin-tabs" id="galleryTabs">
@@ -998,7 +998,7 @@
     if (!data || data.length === 0) {
       state.hasMore = false;
       if (listEl.children.length === 0) {
-        listEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+        listEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada yang diupload.</div>';
       }
       renderLoadMoreBtn(type);
       return;
