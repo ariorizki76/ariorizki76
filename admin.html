@@ -49,6 +49,15 @@
     <div id="statusMsg" class="mt-3 text-center fw-bold"></div>
   </div>
 
+  <hr class="border-secondary" style="max-width: 500px; margin: 0 auto;">
+
+  <div class="container my-5" style="max-width: 500px;">
+    <h5 class="mb-3 text-center">Kelola Kenangan yang Sudah Ada</h5>
+    <div id="galleryList" class="list-group">
+      <div class="text-secondary text-center py-3">Memuat data...</div>
+    </div>
+  </div>
+
 <script>
   const SUPABASE_URL = 'https://mklvshshxlqnawdqgumu.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_9DLq4FnuySUEgje8y9Ba9w_PWV7Lnsy';
@@ -185,6 +194,9 @@
       photoGroup.classList.remove('d-none');
       videoGroup.classList.add('d-none');
 
+      // Refresh daftar kenangan biar item baru langsung kelihatan
+      loadGalleryList();
+
     } catch (err) {
       console.error(err);
       statusMsg.className = 'mt-3 text-center text-danger';
@@ -193,6 +205,123 @@
       btn.disabled = false;
     }
   });
+
+  // ==========================================
+  // KELOLA / HAPUS KENANGAN
+  // ==========================================
+  const galleryListEl = document.getElementById('galleryList');
+
+  function typeLabel(type) {
+    if (type === 'filter-app') return 'Photos';
+    if (type === 'filter-product') return 'Flowers';
+    if (type === 'filter-branding') return 'Videos';
+    return type;
+  }
+
+  // URL publik Supabase Storage formatnya:
+  // {SUPABASE_URL}/storage/v1/object/public/photos/<namafile>
+  // Ekstrak nama file-nya biar bisa dihapus dari bucket.
+  function extractStoragePath(url) {
+    const marker = '/storage/v1/object/public/photos/';
+    const idx = url.indexOf(marker);
+    return idx === -1 ? null : url.substring(idx + marker.length);
+  }
+
+  async function loadGalleryList() {
+    galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Memuat data...</div>';
+
+    const { data, error } = await supabaseClient
+      .from('gallery')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      galleryListEl.innerHTML = '<div class="text-danger text-center py-3">Gagal memuat data: ' + error.message + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+      return;
+    }
+
+    galleryListEl.innerHTML = '';
+
+    data.forEach((item) => {
+      const thumb = item.type === 'filter-branding'
+        ? `https://img.youtube.com/vi/${item.youtube_id}/default.jpg`
+        : (item.images && item.images[0] ? item.images[0] : '');
+
+      const row = document.createElement('div');
+      row.className = 'list-group-item bg-dark text-white d-flex align-items-center gap-3';
+      row.innerHTML = `
+        <img src="${thumb}" alt="" style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;">
+        <div class="flex-grow-1">
+          <div class="fw-bold">${item.title_date}</div>
+          <small class="text-secondary">${typeLabel(item.type)}</small>
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-gallery">Hapus</button>
+      `;
+
+      row.querySelector('.btn-hapus-gallery').addEventListener('click', () => {
+        hapusGalleryItem(item, row);
+      });
+
+      galleryListEl.appendChild(row);
+    });
+  }
+
+  async function hapusGalleryItem(item, row) {
+    const konfirmasi = confirm(`Yakin mau hapus "${item.title_date}"? Aksi ini tidak bisa dibatalkan.`);
+    if (!konfirmasi) return;
+
+    const btn = row.querySelector('.btn-hapus-gallery');
+    btn.disabled = true;
+    btn.textContent = 'Menghapus...';
+
+    try {
+      // 1. Hapus file foto di Storage (kalau kategorinya foto/bunga)
+      if (Array.isArray(item.images) && item.images.length > 0) {
+        const paths = item.images.map(extractStoragePath).filter(p => p !== null);
+
+        if (paths.length > 0) {
+          const { error: storageError } = await supabaseClient
+            .storage
+            .from('photos')
+            .remove(paths);
+
+          // Kalau gagal hapus file storage (misal sudah kehapus manual
+          // sebelumnya), jangan hentikan proses -- yang penting datanya
+          // tetap terhapus dari tabel.
+          if (storageError) console.error('Gagal hapus file storage:', storageError);
+        }
+      }
+
+      // 2. Hapus baris di tabel gallery
+      const { error: deleteError } = await supabaseClient
+        .from('gallery')
+        .delete()
+        .eq('id', item.id);
+
+      if (deleteError) throw deleteError;
+
+      // 3. Hapus dari tampilan tanpa perlu reload semua data
+      row.remove();
+
+      if (galleryListEl.children.length === 0) {
+        galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menghapus: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Hapus';
+    }
+  }
+
+  loadGalleryList();
 </script>
 </body>
 </html>
