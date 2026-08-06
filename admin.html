@@ -21,6 +21,7 @@
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
     :root {
@@ -182,6 +183,107 @@
       max-width: 520px;
       margin: 2rem auto;
     }
+
+    /* PHOTO THUMBNAIL PICKER */
+    .photo-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: .5rem;
+      margin-top: .75rem;
+    }
+
+    .photo-preview-item {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .15s ease, transform .1s ease;
+    }
+
+    .photo-preview-item:hover { transform: translateY(-1px); }
+
+    .photo-preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .photo-preview-item.is-thumb {
+      border-color: var(--qa-accent);
+    }
+
+    .photo-preview-star {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, .75);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+    }
+
+    .photo-preview-item.is-thumb .photo-preview-star {
+      background: var(--qa-accent);
+      color: #1a1a1a;
+    }
+
+    .photo-preview-badge {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--qa-accent);
+      color: #1a1a1a;
+      font-size: .62rem;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: 2px 0;
+    }
+
+    /* KELOLA KENANGAN TABS */
+    .admin-tabs {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .admin-tab-btn {
+      background: transparent;
+      border: 1px solid var(--qa-border);
+      color: var(--qa-muted);
+      border-radius: 999px;
+      padding: .4rem 1rem;
+      font-size: .85rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      transition: all .15s ease;
+    }
+
+    .admin-tab-btn:hover {
+      color: var(--qa-text);
+      border-color: var(--qa-accent);
+    }
+
+    .admin-tab-btn.active {
+      background: var(--qa-accent);
+      border-color: var(--qa-accent);
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+
+    .gallery-tab-pane.d-none { display: none; }
   </style>
 </head>
 <body>
@@ -224,7 +326,8 @@
         <div class="mb-3" id="photoInputGroup">
           <label for="fileInput" class="form-label"><i class="bi bi-images"></i> Pilih Foto (Bisa pilih sekaligus banyak)</label>
           <input type="file" id="fileInput" class="form-control" accept="image/*" multiple required>
-          <small class="text-secondary d-block mt-1">* Foto pertama akan jadi Thumbnail depan. Maks 5MB/file. Foto otomatis dikompres sebelum diupload biar web-nya tetap ringan.</small>
+          <small class="text-secondary d-block mt-1">* Klik salah satu foto di bawah untuk menandainya sebagai Thumbnail depan (ditandai ⭐). Maks 5MB/file. Foto otomatis dikompres sebelum diupload biar web-nya tetap ringan.</small>
+          <div id="photoPreviewGrid" class="photo-preview-grid d-none"></div>
         </div>
 
         <!-- INPUT VIDEO (YOUTUBE) -->
@@ -238,8 +341,6 @@
           <i class="bi bi-check2-circle me-1"></i> Simpan ke Web
         </button>
       </form>
-
-      <div id="statusMsg" class="mt-3 text-center fw-bold"></div>
     </div>
 
     <!-- KELOLA KENANGAN -->
@@ -249,8 +350,28 @@
         <span>Kelola Kenangan yang Sudah Ada</span>
       </div>
 
-      <div id="galleryList" class="list-group">
-        <div class="text-secondary text-center py-3">Memuat data...</div>
+      <div class="admin-tabs" id="galleryTabs">
+        <button type="button" class="admin-tab-btn active" data-type="filter-app">
+          <i class="bi bi-camera"></i> Photos
+        </button>
+        <button type="button" class="admin-tab-btn" data-type="filter-product">
+          <i class="bi bi-flower1"></i> Flowers
+        </button>
+        <button type="button" class="admin-tab-btn" data-type="filter-branding">
+          <i class="bi bi-youtube"></i> Videos
+        </button>
+      </div>
+
+      <div class="gallery-tab-pane" data-type="filter-app">
+        <div id="galleryList-filter-app" class="list-group">
+          <div class="text-secondary text-center py-3">Memuat data...</div>
+        </div>
+      </div>
+      <div class="gallery-tab-pane d-none" data-type="filter-product">
+        <div id="galleryList-filter-product" class="list-group"></div>
+      </div>
+      <div class="gallery-tab-pane d-none" data-type="filter-branding">
+        <div id="galleryList-filter-branding" class="list-group"></div>
       </div>
     </div>
 
@@ -262,11 +383,98 @@
   
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // ==========================================
+  // NOTIFIKASI (SweetAlert2) — dipakai buat semua notif berhasil/gagal
+  // ==========================================
+  const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.onmouseenter = Swal.stopTimer;
+      toast.onmouseleave = Swal.resumeTimer;
+    }
+  });
+
+  function notifSukses(pesan) {
+    Toast.fire({ icon: 'success', title: pesan });
+  }
+
+  function notifGagal(pesan) {
+    Toast.fire({ icon: 'error', title: pesan, timer: 4500 });
+  }
+
   const categorySelect = document.getElementById('category');
   const photoGroup = document.getElementById('photoInputGroup');
   const videoGroup = document.getElementById('videoInputGroup');
   const fileInput = document.getElementById('fileInput');
   const youtubeInput = document.getElementById('youtubeInput');
+
+  // ==========================================
+  // PREVIEW FOTO & PILIH THUMBNAIL MANUAL
+  // ==========================================
+  // Urutan fileInput.files TIDAK selalu sama dengan urutan klik user
+  // di dialog pilih file (browser/OS kadang urutkan sendiri, misal
+  // alfabetis). Makanya "foto pertama jadi thumbnail" suka meleset.
+  // Solusinya: user pilih sendiri foto mana yang jadi thumbnail lewat
+  // preview grid ini, lalu foto itu yang dipindah ke posisi pertama
+  // pas upload -- bukan mengandalkan urutan file asli.
+  const photoPreviewGrid = document.getElementById('photoPreviewGrid');
+  let selectedThumbIndex = 0;
+  let previewObjectUrls = [];
+
+  function clearPreviewUrls() {
+    previewObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    previewObjectUrls = [];
+  }
+
+  function renderPhotoPreview() {
+    clearPreviewUrls();
+    photoPreviewGrid.innerHTML = '';
+
+    const files = Array.from(fileInput.files);
+
+    if (files.length === 0) {
+      photoPreviewGrid.classList.add('d-none');
+      return;
+    }
+
+    photoPreviewGrid.classList.remove('d-none');
+
+    files.forEach((file, idx) => {
+      const url = URL.createObjectURL(file);
+      previewObjectUrls.push(url);
+
+      const item = document.createElement('div');
+      item.className = 'photo-preview-item' + (idx === selectedThumbIndex ? ' is-thumb' : '');
+      item.innerHTML = `
+        <img src="${url}" alt="">
+        <span class="photo-preview-star"><i class="bi ${idx === selectedThumbIndex ? 'bi-star-fill' : 'bi-star'}"></i></span>
+        ${idx === selectedThumbIndex ? '<span class="photo-preview-badge">Thumbnail</span>' : ''}
+      `;
+
+      item.addEventListener('click', () => {
+        selectedThumbIndex = idx;
+        renderPhotoPreview();
+      });
+
+      photoPreviewGrid.appendChild(item);
+    });
+  }
+
+  function resetPhotoPreview() {
+    selectedThumbIndex = 0;
+    clearPreviewUrls();
+    photoPreviewGrid.innerHTML = '';
+    photoPreviewGrid.classList.add('d-none');
+  }
+
+  fileInput.addEventListener('change', () => {
+    selectedThumbIndex = 0;
+    renderPhotoPreview();
+  });
 
   // Toggle Input & Validasi Required Dinamis
   categorySelect.addEventListener('change', () => {
@@ -276,6 +484,8 @@
       
       fileInput.removeAttribute('required');
       youtubeInput.setAttribute('required', 'true');
+      fileInput.value = '';
+      resetPhotoPreview();
     } else {
       photoGroup.classList.remove('d-none');
       videoGroup.classList.add('d-none');
@@ -377,11 +587,16 @@
   document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnSubmit');
-    const statusMsg = document.getElementById('statusMsg');
-    
+
     btn.disabled = true;
-    statusMsg.className = 'mt-3 text-center text-white';
-    statusMsg.textContent = 'Sedang memproses... ⏳';
+    Swal.fire({
+      title: 'Sedang memproses...',
+      html: 'Menyiapkan data ⏳',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
 
     try {
       const category = categorySelect.value;
@@ -411,6 +626,13 @@
         const files = Array.from(fileInput.files);
         if (files.length === 0) throw new Error('Pilih minimal 1 foto!');
 
+        // Pindahkan foto yang ditandai user (⭐) ke posisi paling depan,
+        // karena images[0] itulah yang jadi Thumbnail di halaman utama.
+        if (selectedThumbIndex > 0 && selectedThumbIndex < files.length) {
+          const [thumbFile] = files.splice(selectedThumbIndex, 1);
+          files.unshift(thumbFile);
+        }
+
         const imageUrls = [];
 
         for (let file of files) {
@@ -419,7 +641,7 @@
             throw new Error(`File ${file.name} terlalu besar (maksimal 5MB)!`);
           }
 
-          statusMsg.textContent = `Mengompres ${file.name}... ⏳`;
+          Swal.update({ html: `Mengompres ${file.name}... ⏳` });
           const uploadFile = await compressImage(file);
 
           const fileExt = uploadFile.name.split('.').pop();
@@ -448,8 +670,8 @@
         if (error) throw error;
       }
 
-      statusMsg.className = 'mt-3 text-center text-white';
-      statusMsg.textContent = 'Yeayy! berhasil diupload! 🎉';
+      Swal.close();
+      notifSukses('Yeayy! berhasil diupload! 🎉');
       document.getElementById('uploadForm').reset();
       
       // Reset state input required
@@ -457,28 +679,42 @@
       youtubeInput.removeAttribute('required');
       photoGroup.classList.remove('d-none');
       videoGroup.classList.add('d-none');
+      resetPhotoPreview();
 
-      // Refresh daftar kenangan dari halaman pertama biar item baru langsung kelihatan
-      loadGalleryList(true);
+      // Refresh daftar kenangan di tab kategori yang baru saja diupload,
+      // biar item baru langsung kelihatan. Tab lain ditandai "belum
+      // termuat" supaya di-refresh otomatis begitu user membukanya.
+      refreshGalleryAfterUpload(category);
 
     } catch (err) {
       console.error(err);
-      statusMsg.className = 'mt-3 text-center text-danger';
-      statusMsg.textContent = 'Gagal: ' + err.message;
+      Swal.close();
+      notifGagal('Gagal: ' + err.message);
     } finally {
       btn.disabled = false;
     }
   });
 
   // ==========================================
-  // KELOLA / HAPUS KENANGAN (dengan pagination)
+  // KELOLA / HAPUS KENANGAN (3 tab, pagination per tab)
   // ==========================================
-  const galleryListEl = document.getElementById('galleryList');
-
   const GALLERY_ADMIN_PAGE_SIZE = 10;
-  let adminGalleryOffset = 0;
-  let adminGalleryHasMore = true;
-  let adminGalleryLoading = false;
+  const GALLERY_TYPES = ['filter-app', 'filter-product', 'filter-branding'];
+
+  // Tiap tab/kategori punya cursor pagination sendiri-sendiri, sama seperti
+  // gallerySupaState di index.html -- supaya "Muat Lebih Banyak" di tab
+  // Photos gak nyampur sama tab Flowers/Videos.
+  const adminGalleryState = {
+    'filter-app':      { offset: 0, hasMore: true, loading: false, loaded: false },
+    'filter-product':  { offset: 0, hasMore: true, loading: false, loaded: false },
+    'filter-branding': { offset: 0, hasMore: true, loading: false, loaded: false },
+  };
+
+  let activeGalleryTab = 'filter-app';
+
+  function galleryListElFor(type) {
+    return document.getElementById(`galleryList-${type}`);
+  }
 
   function typeLabel(type) {
     if (type === 'filter-app') return 'Photos';
@@ -530,17 +766,20 @@
     return row;
   }
 
-  function renderLoadMoreBtn() {
-    let btn = document.getElementById('galleryLoadMoreBtn');
+  function renderLoadMoreBtn(type) {
+    const state = adminGalleryState[type];
+    const listEl = galleryListElFor(type);
+    const btnId = `galleryLoadMoreBtn-${type}`;
+    let btn = document.getElementById(btnId);
 
-    if (!adminGalleryHasMore) {
+    if (!state.hasMore) {
       if (btn) btn.remove();
       return;
     }
 
     if (!btn) {
       btn = document.createElement('button');
-      btn.id = 'galleryLoadMoreBtn';
+      btn.id = btnId;
       btn.type = 'button';
       btn.className = 'btn btn-outline-light btn-sm w-100 mt-2';
       btn.innerHTML = '<i class="bi bi-arrow-down-circle me-1"></i> Muat Lebih Banyak';
@@ -548,71 +787,88 @@
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Memuat...';
-        await loadGalleryList(false);
+        await loadGalleryList(type, false);
         // renderLoadMoreBtn() sudah dipanggil ulang di dalam loadGalleryList,
         // jadi tombol lama ini otomatis kepindah ke bawah / kehapus kalau habis.
       });
 
-      galleryListEl.insertAdjacentElement('afterend', btn);
+      listEl.insertAdjacentElement('afterend', btn);
     }
   }
 
-  // reset = true  → mulai dari halaman pertama (dipakai saat load awal / setelah upload baru)
-  // reset = false → lanjut fetch halaman berikutnya (dipakai tombol "Muat Lebih Banyak")
-  async function loadGalleryList(reset = true) {
-    if (adminGalleryLoading) return;
-    if (!reset && !adminGalleryHasMore) return;
+  // reset = true  → mulai dari halaman pertama tab ini (load awal / abis upload / pertama kali tab dibuka)
+  // reset = false → lanjut fetch halaman berikutnya tab ini (tombol "Muat Lebih Banyak")
+  async function loadGalleryList(type, reset = true) {
+    const state = adminGalleryState[type];
+    const listEl = galleryListElFor(type);
+    if (state.loading) return;
+    if (!reset && !state.hasMore) return;
 
     if (reset) {
-      adminGalleryOffset = 0;
-      adminGalleryHasMore = true;
-      galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Memuat data...</div>';
-      const oldBtn = document.getElementById('galleryLoadMoreBtn');
+      state.offset = 0;
+      state.hasMore = true;
+      listEl.innerHTML = '<div class="text-secondary text-center py-3">Memuat data...</div>';
+      const oldBtn = document.getElementById(`galleryLoadMoreBtn-${type}`);
       if (oldBtn) oldBtn.remove();
     }
 
-    adminGalleryLoading = true;
+    state.loading = true;
 
     const { data, error } = await supabaseClient
       .from('gallery')
       .select('*')
+      .eq('type', type)
       .order('id', { ascending: false })
-      .range(adminGalleryOffset, adminGalleryOffset + GALLERY_ADMIN_PAGE_SIZE - 1);
+      .range(state.offset, state.offset + GALLERY_ADMIN_PAGE_SIZE - 1);
 
-    adminGalleryLoading = false;
+    state.loading = false;
+    state.loaded = true;
 
     if (error) {
       console.error(error);
-      galleryListEl.innerHTML = '<div class="text-danger text-center py-3">Gagal memuat data: ' + error.message + '</div>';
+      listEl.innerHTML = '<div class="text-danger text-center py-3">Gagal memuat data: ' + error.message + '</div>';
       return;
     }
 
-    if (reset) galleryListEl.innerHTML = '';
+    if (reset) listEl.innerHTML = '';
 
     if (!data || data.length === 0) {
-      adminGalleryHasMore = false;
-      if (galleryListEl.children.length === 0) {
-        galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+      state.hasMore = false;
+      if (listEl.children.length === 0) {
+        listEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
       }
-      renderLoadMoreBtn();
+      renderLoadMoreBtn(type);
       return;
     }
 
-    adminGalleryOffset += data.length;
+    state.offset += data.length;
     if (data.length < GALLERY_ADMIN_PAGE_SIZE) {
-      adminGalleryHasMore = false;
+      state.hasMore = false;
     }
 
     data.forEach((item) => {
-      galleryListEl.appendChild(renderGalleryRow(item));
+      listEl.appendChild(renderGalleryRow(item));
     });
 
-    renderLoadMoreBtn();
+    renderLoadMoreBtn(type);
   }
 
   async function hapusGalleryItem(item, row) {
-    const konfirmasi = confirm(`Yakin mau hapus "${item.title_date}"? Aksi ini tidak bisa dibatalkan.`);
-    if (!konfirmasi) return;
+    const konfirmasi = await Swal.fire({
+      title: 'Yakin mau hapus?',
+      text: `"${item.title_date}" akan dihapus permanen. Aksi ini tidak bisa dibatalkan.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d'
+    });
+    if (!konfirmasi.isConfirmed) return;
+
+    const type = item.type;
+    const state = adminGalleryState[type];
+    const listEl = galleryListElFor(type);
 
     const btn = row.querySelector('.btn-hapus-gallery');
     btn.disabled = true;
@@ -647,23 +903,67 @@
       // 3. Hapus dari tampilan tanpa perlu reload semua data
       row.remove();
 
-      // Geser cursor pagination mundur 1 supaya "Muat Lebih Banyak" berikutnya
-      // gak nyasar/skip baris gara-gara satu baris barusan kehapus dari tabel.
-      adminGalleryOffset = Math.max(0, adminGalleryOffset - 1);
+      // Geser cursor pagination tab ini mundur 1 supaya "Muat Lebih Banyak"
+      // berikutnya gak nyasar/skip baris gara-gara satu baris barusan
+      // kehapus dari tabel.
+      state.offset = Math.max(0, state.offset - 1);
 
-      if (galleryListEl.children.length === 0 && !adminGalleryHasMore) {
-        galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+      if (listEl.children.length === 0 && !state.hasMore) {
+        listEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
       }
+
+      notifSukses('Berhasil dihapus 🗑️');
 
     } catch (err) {
       console.error(err);
-      alert('Gagal menghapus: ' + err.message);
+      notifGagal('Gagal menghapus: ' + err.message);
       btn.disabled = false;
       btn.innerHTML = '<i class="bi bi-trash3"></i>';
     }
   }
 
-  loadGalleryList(true);
+  // ==========================================
+  // SWITCH TAB
+  // ==========================================
+  function switchGalleryTab(type) {
+    activeGalleryTab = type;
+
+    document.querySelectorAll('.admin-tab-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.type === type);
+    });
+
+    document.querySelectorAll('.gallery-tab-pane').forEach((pane) => {
+      pane.classList.toggle('d-none', pane.dataset.type !== type);
+    });
+
+    // Lazy load: baru fetch data tab ini kalau belum pernah dimuat
+    // (atau sengaja ditandai stale, misal abis upload ke kategori lain).
+    if (!adminGalleryState[type].loaded) {
+      loadGalleryList(type, true);
+    }
+  }
+
+  document.getElementById('galleryTabs').addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('.admin-tab-btn');
+    if (!tabBtn) return;
+    switchGalleryTab(tabBtn.dataset.type);
+  });
+
+  // Dipanggil setelah upload berhasil. Tab kategori yang baru saja diupload
+  // langsung di-refresh dari halaman pertama (kalau dia yang lagi aktif),
+  // tab lain cukup ditandai "belum termuat" biar di-refetch pas dibuka.
+  function refreshGalleryAfterUpload(uploadedType) {
+    // Hanya tab kategori yang baru saja diupload yang datanya berubah.
+    adminGalleryState[uploadedType].loaded = false;
+
+    if (activeGalleryTab === uploadedType) {
+      loadGalleryList(uploadedType, true);
+    }
+    // Kalau tab kategori itu lagi gak aktif, biarkan loaded=false --
+    // otomatis di-refetch dari halaman pertama pas user membuka tabnya.
+  }
+
+  loadGalleryList('filter-app', true);
 </script>
 </body>
 </html>
