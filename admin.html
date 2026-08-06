@@ -551,11 +551,17 @@
 
       customOptionEls.forEach((o) => o.classList.remove('is-selected'));
       opt.classList.add('is-selected');
-      syncCustomSelectLabel();
       customSelect.classList.remove('open');
 
-      if (categorySelect.value !== value) {
-        categorySelect.value = value;
+      // Update dulu value select aslinya, baru sinkronkan labelnya --
+      // syncCustomSelectLabel() baca dari categorySelect.value, jadi kalau
+      // dipanggil sebelum value di-update, label yang tampil selalu 1
+      // langkah ketinggalan (delay).
+      const isChanged = categorySelect.value !== value;
+      categorySelect.value = value;
+      syncCustomSelectLabel();
+
+      if (isChanged) {
         categorySelect.dispatchEvent(new Event('change'));
       }
     });
