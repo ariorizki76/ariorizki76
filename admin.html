@@ -1042,16 +1042,28 @@
       if (Array.isArray(item.images) && item.images.length > 0) {
         const paths = item.images.map(extractStoragePath).filter(p => p !== null);
 
+        console.log('[Hapus Storage] URL asli di kolom images:', item.images);
+        console.log('[Hapus Storage] Path yang mau dihapus dari bucket "photos":', paths);
+
         if (paths.length > 0) {
-          const { error: storageError } = await supabaseClient
+          const { data: removedData, error: storageError } = await supabaseClient
             .storage
             .from('photos')
             .remove(paths);
 
+          console.log('[Hapus Storage] Respon remove():', { removedData, storageError });
+
           // Kalau gagal hapus file storage (misal sudah kehapus manual
           // sebelumnya), jangan hentikan proses -- yang penting datanya
-          // tetap terhapus dari tabel.
-          if (storageError) console.error('Gagal hapus file storage:', storageError);
+          // tetap terhapus dari tabel. Tapi tetap kasih tahu di layar
+          // biar ketahuan kalau ada yang nyangkut.
+          if (storageError) {
+            console.error('Gagal hapus file storage:', storageError);
+            notifGagal('Baris terhapus, tapi file di storage gagal dihapus: ' + storageError.message);
+          } else if (!removedData || removedData.length < paths.length) {
+            console.warn('[Hapus Storage] Jumlah file yang kehapus (' + (removedData ? removedData.length : 0) + ') lebih sedikit dari yang diminta (' + paths.length + '). Kemungkinan path di bucket beda sama yang di kolom images.');
+            notifGagal('Baris terhapus, tapi sebagian/semua file foto tidak ketemu di storage (cek console).');
+          }
         }
       }
 
