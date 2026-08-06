@@ -3,59 +3,257 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Upload — Quiet Archive</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0f172a">
+  <title>pia ✿ iyo — Admin Archive</title>
+  <link href="assets/img/favicon.jpg" rel="icon">
+  <link href="assets/img/favicon.jpg" rel="apple-touch-icon">
+
+  <!-- FONTS (sama seperti index.html) -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:300;400;500&family=Poppins:300;400;500&family=Raleway:300;400;500&display=swap"
+    rel="stylesheet">
+
+  <!-- VENDOR CSS (sama seperti index.html) -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --qa-bg: #0f172a;
+      --qa-panel: rgba(255, 255, 255, 0.04);
+      --qa-panel-hover: rgba(255, 255, 255, 0.07);
+      --qa-border: rgba(255, 255, 255, 0.09);
+      --qa-text: #f1f1f1;
+      --qa-muted: #9aa3b2;
+      --qa-accent: #e7c9a9;
+    }
+
+    body {
+      background-color: var(--qa-bg);
+      color: var(--qa-text);
+      font-family: 'Raleway', 'Roboto', sans-serif;
+      min-height: 100vh;
+      padding-bottom: 3rem;
+    }
+
+    /* TOPBAR */
+    .admin-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem .5rem;
+    }
+
+    .admin-topbar .brand {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+      font-size: 1.05rem;
+      color: var(--qa-text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .admin-topbar .brand:hover { color: var(--qa-accent); }
+
+    .admin-topbar .badge-admin {
+      font-size: .68rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--qa-muted);
+      border: 1px solid var(--qa-border);
+      border-radius: 999px;
+      padding: .25rem .65rem;
+    }
+
+    /* SECTIONS */
+    .admin-wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    .admin-card {
+      background: var(--qa-panel);
+      border: 1px solid var(--qa-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .admin-heading {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .admin-heading i { color: var(--qa-accent); }
+
+    .form-label {
+      color: var(--qa-muted);
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-bottom: .4rem;
+    }
+
+    .form-control, .form-select {
+      background-color: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid var(--qa-border) !important;
+      color: var(--qa-text) !important;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--qa-accent) !important;
+      box-shadow: 0 0 0 .2rem rgba(231, 201, 169, .15) !important;
+    }
+
+    .form-control::placeholder { color: var(--qa-muted); opacity: .7; }
+
+    .btn-save {
+      background-color: var(--qa-accent);
+      border-color: var(--qa-accent);
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+
+    .btn-save:hover, .btn-save:active {
+      background-color: #dfb98f;
+      border-color: #dfb98f;
+      color: #1a1a1a;
+    }
+
+    .btn-save:disabled { opacity: .6; }
+
+    /* GALLERY LIST */
+    .gallery-row-item {
+      background: var(--qa-panel) !important;
+      border: 1px solid var(--qa-border) !important;
+      border-radius: 12px !important;
+      margin-bottom: .55rem;
+      transition: background-color .15s ease;
+    }
+
+    .gallery-row-item:hover { background: var(--qa-panel-hover) !important; }
+
+    .type-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--qa-accent);
+      flex-shrink: 0;
+      font-size: 1rem;
+    }
+
+    .btn-hapus-gallery {
+      border-radius: 9px;
+    }
+
+    #galleryLoadMoreBtn {
+      border-radius: 10px;
+      border-color: var(--qa-border);
+      color: var(--qa-muted);
+    }
+
+    #galleryLoadMoreBtn:hover {
+      color: var(--qa-text);
+      border-color: var(--qa-accent);
+    }
+
+    hr.admin-divider {
+      border-color: var(--qa-border);
+      max-width: 520px;
+      margin: 2rem auto;
+    }
+  </style>
 </head>
-<body class="bg-dark text-white p-4">
+<body>
 
-  <div class="container my-5" style="max-width: 500px;">
-    <h3 class="mb-4 text-center">Upload Kenangan Baru ✨</h3>
-    
-    <form id="uploadForm">
-      <!-- KATEGORI -->
-      <div class="mb-3">
-        <label for="category" class="form-label">Kategori</label>
-        <select id="category" class="form-select bg-dark text-white" required>
-          <option value="filter-app">Photos</option>
-          <option value="filter-product">Flowers</option>
-          <option value="filter-branding">Videos</option>
-        </select>
-      </div>
-
-      <!-- TANGGAL KENANGAN -->
-      <div class="mb-3">
-        <label for="datePicker" class="form-label">Tanggal Kenangan</label>
-        <input type="date" id="datePicker" class="form-control bg-dark text-white" style="color-scheme: dark;" required>
-      </div>
-
-      <!-- INPUT FOTO / BUNGA -->
-      <div class="mb-3" id="photoInputGroup">
-        <label for="fileInput" class="form-label">Pilih Foto (Bisa pilih sekaligus banyak)</label>
-        <input type="file" id="fileInput" class="form-control bg-dark text-white" accept="image/*" multiple required>
-        <small class="text-secondary d-block mt-1">* Foto pertama akan jadi Thumbnail depan. Maks 5MB/file. Foto otomatis dikompres sebelum diupload biar web-nya tetap ringan.</small>
-      </div>
-
-      <!-- INPUT VIDEO (YOUTUBE) -->
-      <div class="mb-3 d-none" id="videoInputGroup">
-        <label for="youtubeInput" class="form-label">Link / ID Video YouTube</label>
-        <input type="text" id="youtubeInput" class="form-control bg-dark text-white" placeholder="https://www.youtube.com/watch?v=j4WCU8UFEas">
-        <small class="text-secondary d-block mt-1">* Masukkan URL lengkap YouTube atau 11 digit ID Video.</small>
-      </div>
-
-      <button type="submit" id="btnSubmit" class="btn btn-light w-100 mt-3">Simpan ke Web</button>
-    </form>
-    
-    <div id="statusMsg" class="mt-3 text-center fw-bold"></div>
+  <div class="admin-topbar">
+    <a href="index.html" class="brand">
+      <i class="bi bi-house-door"></i>
+      <span>pia ✿ iyo</span>
+    </a>
+    <span class="badge-admin">Admin</span>
   </div>
 
-  <hr class="border-secondary" style="max-width: 500px; margin: 0 auto;">
+  <div class="admin-wrap">
 
-  <div class="container my-5" style="max-width: 500px;">
-    <h5 class="mb-3 text-center">Kelola Kenangan yang Sudah Ada</h5>
-    <div id="galleryList" class="list-group">
-      <div class="text-secondary text-center py-3">Memuat data...</div>
+    <!-- UPLOAD FORM -->
+    <div class="admin-card">
+      <div class="admin-heading">
+        <i class="bi bi-cloud-upload"></i>
+        <span>Upload Kenangan Baru</span>
+      </div>
+
+      <form id="uploadForm">
+        <!-- KATEGORI -->
+        <div class="mb-3">
+          <label for="category" class="form-label"><i class="bi bi-tag"></i> Kategori</label>
+          <select id="category" class="form-select" required>
+            <option value="filter-app">Photos</option>
+            <option value="filter-product">Flowers</option>
+            <option value="filter-branding">Videos</option>
+          </select>
+        </div>
+
+        <!-- TANGGAL KENANGAN -->
+        <div class="mb-3">
+          <label for="datePicker" class="form-label"><i class="bi bi-calendar-heart"></i> Tanggal Kenangan</label>
+          <input type="date" id="datePicker" class="form-control" style="color-scheme: dark;" required>
+        </div>
+
+        <!-- INPUT FOTO / BUNGA -->
+        <div class="mb-3" id="photoInputGroup">
+          <label for="fileInput" class="form-label"><i class="bi bi-images"></i> Pilih Foto (Bisa pilih sekaligus banyak)</label>
+          <input type="file" id="fileInput" class="form-control" accept="image/*" multiple required>
+          <small class="text-secondary d-block mt-1">* Foto pertama akan jadi Thumbnail depan. Maks 5MB/file. Foto otomatis dikompres sebelum diupload biar web-nya tetap ringan.</small>
+        </div>
+
+        <!-- INPUT VIDEO (YOUTUBE) -->
+        <div class="mb-3 d-none" id="videoInputGroup">
+          <label for="youtubeInput" class="form-label"><i class="bi bi-youtube"></i> Link / ID Video YouTube</label>
+          <input type="text" id="youtubeInput" class="form-control" placeholder="https://www.youtube.com/watch?v=j4WCU8UFEas">
+          <small class="text-secondary d-block mt-1">* Masukkan URL lengkap YouTube atau 11 digit ID Video.</small>
+        </div>
+
+        <button type="submit" id="btnSubmit" class="btn btn-save w-100 mt-3">
+          <i class="bi bi-check2-circle me-1"></i> Simpan ke Web
+        </button>
+      </form>
+
+      <div id="statusMsg" class="mt-3 text-center fw-bold"></div>
     </div>
+
+    <!-- KELOLA KENANGAN -->
+    <div class="admin-card">
+      <div class="admin-heading">
+        <i class="bi bi-collection"></i>
+        <span>Kelola Kenangan yang Sudah Ada</span>
+      </div>
+
+      <div id="galleryList" class="list-group">
+        <div class="text-secondary text-center py-3">Memuat data...</div>
+      </div>
+    </div>
+
   </div>
 
 <script>
@@ -260,8 +458,8 @@
       photoGroup.classList.remove('d-none');
       videoGroup.classList.add('d-none');
 
-      // Refresh daftar kenangan biar item baru langsung kelihatan
-      loadGalleryList();
+      // Refresh daftar kenangan dari halaman pertama biar item baru langsung kelihatan
+      loadGalleryList(true);
 
     } catch (err) {
       console.error(err);
@@ -273,15 +471,27 @@
   });
 
   // ==========================================
-  // KELOLA / HAPUS KENANGAN
+  // KELOLA / HAPUS KENANGAN (dengan pagination)
   // ==========================================
   const galleryListEl = document.getElementById('galleryList');
+
+  const GALLERY_ADMIN_PAGE_SIZE = 10;
+  let adminGalleryOffset = 0;
+  let adminGalleryHasMore = true;
+  let adminGalleryLoading = false;
 
   function typeLabel(type) {
     if (type === 'filter-app') return 'Photos';
     if (type === 'filter-product') return 'Flowers';
     if (type === 'filter-branding') return 'Videos';
     return type;
+  }
+
+  function typeIcon(type) {
+    if (type === 'filter-app') return 'bi-camera';
+    if (type === 'filter-product') return 'bi-flower1';
+    if (type === 'filter-branding') return 'bi-youtube';
+    return 'bi-bookmark';
   }
 
   // URL publik Supabase Storage formatnya:
@@ -293,13 +503,83 @@
     return idx === -1 ? null : url.substring(idx + marker.length);
   }
 
-  async function loadGalleryList() {
-    galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Memuat data...</div>';
+  function renderGalleryRow(item) {
+    const thumb = item.type === 'filter-branding'
+      ? `https://img.youtube.com/vi/${item.youtube_id}/default.jpg`
+      : (item.images && item.images[0] ? item.images[0] : '');
+
+    const row = document.createElement('div');
+    row.className = 'list-group-item gallery-row-item d-flex align-items-center gap-3';
+    row.innerHTML = `
+      <img src="${thumb}" alt="" style="width:52px; height:52px; object-fit:cover; border-radius:9px; flex-shrink:0;">
+      <div class="flex-grow-1">
+        <div class="fw-bold">${item.title_date}</div>
+        <small class="text-secondary d-flex align-items-center gap-1">
+          <i class="bi ${typeIcon(item.type)}"></i> ${typeLabel(item.type)}
+        </small>
+      </div>
+      <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-gallery" title="Hapus">
+        <i class="bi bi-trash3"></i>
+      </button>
+    `;
+
+    row.querySelector('.btn-hapus-gallery').addEventListener('click', () => {
+      hapusGalleryItem(item, row);
+    });
+
+    return row;
+  }
+
+  function renderLoadMoreBtn() {
+    let btn = document.getElementById('galleryLoadMoreBtn');
+
+    if (!adminGalleryHasMore) {
+      if (btn) btn.remove();
+      return;
+    }
+
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'galleryLoadMoreBtn';
+      btn.type = 'button';
+      btn.className = 'btn btn-outline-light btn-sm w-100 mt-2';
+      btn.innerHTML = '<i class="bi bi-arrow-down-circle me-1"></i> Muat Lebih Banyak';
+
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Memuat...';
+        await loadGalleryList(false);
+        // renderLoadMoreBtn() sudah dipanggil ulang di dalam loadGalleryList,
+        // jadi tombol lama ini otomatis kepindah ke bawah / kehapus kalau habis.
+      });
+
+      galleryListEl.insertAdjacentElement('afterend', btn);
+    }
+  }
+
+  // reset = true  → mulai dari halaman pertama (dipakai saat load awal / setelah upload baru)
+  // reset = false → lanjut fetch halaman berikutnya (dipakai tombol "Muat Lebih Banyak")
+  async function loadGalleryList(reset = true) {
+    if (adminGalleryLoading) return;
+    if (!reset && !adminGalleryHasMore) return;
+
+    if (reset) {
+      adminGalleryOffset = 0;
+      adminGalleryHasMore = true;
+      galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Memuat data...</div>';
+      const oldBtn = document.getElementById('galleryLoadMoreBtn');
+      if (oldBtn) oldBtn.remove();
+    }
+
+    adminGalleryLoading = true;
 
     const { data, error } = await supabaseClient
       .from('gallery')
       .select('*')
-      .order('id', { ascending: false });
+      .order('id', { ascending: false })
+      .range(adminGalleryOffset, adminGalleryOffset + GALLERY_ADMIN_PAGE_SIZE - 1);
+
+    adminGalleryLoading = false;
 
     if (error) {
       console.error(error);
@@ -307,35 +587,27 @@
       return;
     }
 
+    if (reset) galleryListEl.innerHTML = '';
+
     if (!data || data.length === 0) {
-      galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+      adminGalleryHasMore = false;
+      if (galleryListEl.children.length === 0) {
+        galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
+      }
+      renderLoadMoreBtn();
       return;
     }
 
-    galleryListEl.innerHTML = '';
+    adminGalleryOffset += data.length;
+    if (data.length < GALLERY_ADMIN_PAGE_SIZE) {
+      adminGalleryHasMore = false;
+    }
 
     data.forEach((item) => {
-      const thumb = item.type === 'filter-branding'
-        ? `https://img.youtube.com/vi/${item.youtube_id}/default.jpg`
-        : (item.images && item.images[0] ? item.images[0] : '');
-
-      const row = document.createElement('div');
-      row.className = 'list-group-item bg-dark text-white d-flex align-items-center gap-3';
-      row.innerHTML = `
-        <img src="${thumb}" alt="" style="width:56px; height:56px; object-fit:cover; border-radius:8px; flex-shrink:0;">
-        <div class="flex-grow-1">
-          <div class="fw-bold">${item.title_date}</div>
-          <small class="text-secondary">${typeLabel(item.type)}</small>
-        </div>
-        <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-gallery">Hapus</button>
-      `;
-
-      row.querySelector('.btn-hapus-gallery').addEventListener('click', () => {
-        hapusGalleryItem(item, row);
-      });
-
-      galleryListEl.appendChild(row);
+      galleryListEl.appendChild(renderGalleryRow(item));
     });
+
+    renderLoadMoreBtn();
   }
 
   async function hapusGalleryItem(item, row) {
@@ -344,7 +616,7 @@
 
     const btn = row.querySelector('.btn-hapus-gallery');
     btn.disabled = true;
-    btn.textContent = 'Menghapus...';
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
 
     try {
       // 1. Hapus file foto di Storage (kalau kategorinya foto/bunga)
@@ -375,7 +647,11 @@
       // 3. Hapus dari tampilan tanpa perlu reload semua data
       row.remove();
 
-      if (galleryListEl.children.length === 0) {
+      // Geser cursor pagination mundur 1 supaya "Muat Lebih Banyak" berikutnya
+      // gak nyasar/skip baris gara-gara satu baris barusan kehapus dari tabel.
+      adminGalleryOffset = Math.max(0, adminGalleryOffset - 1);
+
+      if (galleryListEl.children.length === 0 && !adminGalleryHasMore) {
         galleryListEl.innerHTML = '<div class="text-secondary text-center py-3">Belum ada kenangan yang diupload.</div>';
       }
 
@@ -383,11 +659,11 @@
       console.error(err);
       alert('Gagal menghapus: ' + err.message);
       btn.disabled = false;
-      btn.textContent = 'Hapus';
+      btn.innerHTML = '<i class="bi bi-trash3"></i>';
     }
   }
 
-  loadGalleryList();
+  loadGalleryList(true);
 </script>
 </body>
 </html>
