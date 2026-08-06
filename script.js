@@ -1,6 +1,3 @@
-
-
-
 const music = document.getElementById("bgMusic");
 const titleEl = document.getElementById("songTitle");
 const playBtn = document.getElementById("playBtn");
@@ -154,13 +151,40 @@ document.getElementById("loveCounter").innerHTML =
 
 
 let updateGalleryItems; // Buat variabel global agar bisa dipanggil dari Supabase loader
+let ensureEnoughItems; // Dipanggil sebelum reveal, buat fetch data Supabase bertahap kalau kurang
+let initIsotopeGallery; // Init Isotope lebih awal (gak nunggu Supabase), dipanggil dari loader juga
 
 document.addEventListener("DOMContentLoaded", function () {
     const btn = document.getElementById('loadMoreBtn');
     const filters = document.querySelectorAll('.isotope-filters li');
+    const container = document.querySelector('.isotope-container');
 
     let currentFilter = '.filter-app';
     let visible = 3;
+
+    // Init Isotope begitu DOM siap, pakai item yang sudah ada dulu (hardcoded)
+    // — jadi filter & load more udah jalan walau data Supabase belum/belum semua ke-fetch.
+    initIsotopeGallery = function () {
+        if (!container || typeof Isotope === 'undefined') return;
+
+        imagesLoaded(container, function () {
+            if (!window.iso) {
+                window.iso = new Isotope(container, {
+                    itemSelector: '.portfolio-item',
+                    layoutMode: 'masonry'
+                });
+            } else {
+                window.iso.reloadItems();
+                window.iso.layout();
+            }
+
+            if (typeof GLightbox !== 'undefined') {
+                GLightbox({ selector: '.glightbox' });
+            }
+
+            updateGalleryItems();
+        });
+    };
 
     updateGalleryItems = function() {
         if (!window.iso) return;
@@ -180,27 +204,37 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        const total = document.querySelectorAll(currentFilter).length;
+        const filterClass = currentFilter.replace('.', '');
+        const domTotal = document.querySelectorAll(currentFilter).length;
+        const state = window.gallerySupaState && window.gallerySupaState[filterClass];
+        const stillHasMoreFromSupabase = state ? state.hasMore : false;
 
-        if (visible >= total) {
+        if (visible >= domTotal && !stillHasMoreFromSupabase) {
             btn.style.display = 'none';
         } else {
             btn.style.display = 'inline-block';
         }
     };
 
-    btn.addEventListener('click', function () {
+    btn.addEventListener('click', async function () {
         visible += 3;
+        btn.disabled = true;
+        await ensureEnoughItems(currentFilter, visible);
+        btn.disabled = false;
         updateGalleryItems();
     });
 
     filters.forEach(filter => {
-        filter.addEventListener('click', function () {
+        filter.addEventListener('click', async function () {
             currentFilter = this.getAttribute('data-filter');
             visible = 3;
+            await ensureEnoughItems(currentFilter, visible);
             setTimeout(updateGalleryItems, 50);
         });
     });
+
+    // Isotope-nya diinit begitu ada di sini, gak perlu nunggu Supabase
+    initIsotopeGallery();
 });
 
 const lightbox = GLightbox({
@@ -338,24 +372,24 @@ const SUPABASE_ANON_KEY = 'sb_publishable_9DLq4FnuySUEgje8y9Ba9w_PWV7Lnsy';
 // ✅ Ganti nama variabel penampung menjadi 'supabaseClient' (agar tidak bentrok dengan library 'supabase')
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-async function loadGalleryFromSupabase() {
-  const container = document.querySelector('.isotope-container');
-  if (!container) return;
+// ==========================================
+// PAGINATION: fetch data Supabase bertahap per kategori,
+// bukan sekaligus semua baris. Hardcoded items yang udah ada di
+// index.html dipakai duluan buat isi 3 slot pertama tiap kategori,
+// jadi kalau item hardcoded-nya masih cukup, gak ada fetch sama sekali.
+// ==========================================
+const GALLERY_PAGE_SIZE = 6;
+const gallerySupaState = {
+  'filter-app':      { offset: 0, hasMore: true, loading: false },
+  'filter-product':  { offset: 0, hasMore: true, loading: false },
+  'filter-branding': { offset: 0, hasMore: true, loading: false },
+};
+window.gallerySupaState = gallerySupaState; // dibaca updateGalleryItems buat nentuin tombol Load More
 
-  const { data: galleryItems, error } = await supabaseClient
-    .from('gallery')
-    .select('*')
-    .order('id', { ascending: false });
+function renderGalleryItemHtml(item) {
+  let itemHtml = '';
 
-  if (error) {
-    console.error('Error fetching gallery:', error);
-    return;
-  }
-
-  galleryItems.forEach((item) => {
-    let itemHtml = '';
-
-    if (item.type === 'filter-branding') {
+  if (item.type === 'filter-branding') {
       itemHtml = `
         <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-branding gallery-item">
           <div class="portfolio-content h-100 position-relative">
@@ -405,37 +439,74 @@ async function loadGalleryFromSupabase() {
           </div>
         </div>
       `;
-    }
+  }
 
-    container.insertAdjacentHTML('afterbegin', itemHtml);
-  });
-
-  // ✅ PERBAIKAN: Pastikan SEMUA gambar selesai di-load sebelum Isotope & Lightbox dihitung ulang
-  imagesLoaded(container, function () {
-    // 1. Inisialisasi / Re-layout Isotope
-    if (typeof Isotope !== 'undefined') {
-      if (!window.iso) {
-        window.iso = new Isotope(container, {
-          itemSelector: '.portfolio-item',
-          layoutMode: 'masonry'
-        });
-      } else {
-        window.iso.reloadItems();
-        window.iso.layout();
-      }
-    }
-
-    // 2. Inisialisasi ulang GLightbox
-    if (typeof GLightbox !== 'undefined') {
-      GLightbox({ selector: '.glightbox' });
-    }
-
-    // 3. Panggil updateItems agar filter & load more berjalan normal
-    if (typeof updateGalleryItems === 'function') {
-      updateGalleryItems();
-    }
-  });
+  return itemHtml;
 }
 
-// Jalankan saat dokumen siap
-document.addEventListener('DOMContentLoaded', loadGalleryFromSupabase);
+// Ambil satu halaman (GALLERY_PAGE_SIZE baris) dari Supabase untuk satu
+// kategori, lalu sisipkan ke DOM. Return true kalau ada data baru yang
+// disisipkan, false kalau tidak ada (habis / gagal / lagi loading).
+async function fetchNextSupabasePage(filterClass) {
+  const container = document.querySelector('.isotope-container');
+  const state = gallerySupaState[filterClass];
+  if (!container || !state || state.loading || !state.hasMore) return false;
+
+  state.loading = true;
+
+  const { data, error } = await supabaseClient
+    .from('gallery')
+    .select('*')
+    .eq('type', filterClass)
+    .order('id', { ascending: false })
+    .range(state.offset, state.offset + GALLERY_PAGE_SIZE - 1);
+
+  state.loading = false;
+
+  if (error) {
+    console.error('Gagal memuat galeri dari Supabase:', error);
+    return false;
+  }
+
+  if (!data || data.length === 0) {
+    state.hasMore = false;
+    return false;
+  }
+
+  state.offset += data.length;
+  if (data.length < GALLERY_PAGE_SIZE) {
+    state.hasMore = false;
+  }
+
+  const combinedHtml = data.map(renderGalleryItemHtml).join('');
+  container.insertAdjacentHTML('beforeend', combinedHtml);
+
+  // Tunggu gambar-gambar baru selesai load sebelum Isotope hitung ulang layout,
+  // baru re-init/reload lewat initIsotopeGallery (dipasang di block DOMContentLoaded).
+  await new Promise((resolve) => {
+    imagesLoaded(container, resolve);
+  });
+
+  if (typeof initIsotopeGallery === 'function') {
+    initIsotopeGallery();
+  }
+
+  return true;
+}
+
+// Dipanggil sebelum reveal (klik Load More / ganti filter): fetch dari
+// Supabase bertahap, halaman demi halaman, sampai jumlah item kategori itu
+// di DOM cukup buat menampilkan `neededCount`, atau sampai datanya habis.
+ensureEnoughItems = async function (filterSelector, neededCount) {
+  const filterClass = filterSelector.replace('.', '');
+  const state = gallerySupaState[filterClass];
+  if (!state) return;
+
+  let count = document.querySelectorAll(filterSelector).length;
+
+  while (count < neededCount && state.hasMore && !state.loading) {
+    const fetched = await fetchNextSupabasePage(filterClass);
+    if (!fetched) break;
+    count = document.querySelectorAll(filterSelector).length;
+  }
+};
