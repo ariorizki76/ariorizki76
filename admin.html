@@ -124,6 +124,99 @@
 
     .form-control::placeholder { color: var(--qa-muted); opacity: .7; }
 
+    /* CUSTOM DROPDOWN KATEGORI */
+    .custom-select {
+      position: relative;
+      user-select: none;
+    }
+
+    .custom-select-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--qa-border);
+      color: var(--qa-text);
+      border-radius: .375rem;
+      padding: .5rem .9rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .custom-select-trigger:hover { border-color: var(--qa-accent); }
+
+    .custom-select.open .custom-select-trigger {
+      border-color: var(--qa-accent);
+      box-shadow: 0 0 0 .2rem rgba(231, 201, 169, .15);
+    }
+
+    .custom-select-selected {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+    }
+
+    .custom-select-selected i { color: var(--qa-accent); }
+
+    .custom-select-caret {
+      color: var(--qa-muted);
+      font-size: .8rem;
+      transition: transform .15s ease;
+    }
+
+    .custom-select.open .custom-select-caret { transform: rotate(180deg); }
+
+    .custom-select-options {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: #172038;
+      border: 1px solid var(--qa-border);
+      border-radius: 12px;
+      padding: .4rem;
+      z-index: 20;
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .4);
+    }
+
+    .custom-select.open .custom-select-options {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .custom-select-option {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .55rem .75rem;
+      border-radius: 9px;
+      color: var(--qa-muted);
+      cursor: pointer;
+      font-size: .92rem;
+      transition: background-color .12s ease, color .12s ease;
+    }
+
+    .custom-select-option i { width: 1.1em; text-align: center; }
+
+    .custom-select-option:hover {
+      background: var(--qa-panel-hover);
+      color: var(--qa-text);
+    }
+
+    .custom-select-option.is-selected {
+      background: rgba(231, 201, 169, .14);
+      color: var(--qa-accent);
+      font-weight: 500;
+    }
+
     .btn-save {
       background-color: var(--qa-accent);
       border-color: var(--qa-accent);
@@ -308,8 +401,21 @@
       <form id="uploadForm">
         <!-- KATEGORI -->
         <div class="mb-3">
-          <label for="category" class="form-label"><i class="bi bi-tag"></i> Kategori</label>
-          <select id="category" class="form-select" required>
+          <label class="form-label"><i class="bi bi-tag"></i> Kategori</label>
+
+          <div class="custom-select" id="categoryCustomSelect">
+            <button type="button" class="custom-select-trigger" id="categoryTrigger">
+              <span class="custom-select-selected"><i class="bi bi-camera"></i> Photos</span>
+              <i class="bi bi-chevron-down custom-select-caret"></i>
+            </button>
+            <div class="custom-select-options" id="categoryOptions">
+              <div class="custom-select-option is-selected" data-value="filter-app"><i class="bi bi-camera"></i> Photos</div>
+              <div class="custom-select-option" data-value="filter-product"><i class="bi bi-flower1"></i> Flowers</div>
+              <div class="custom-select-option" data-value="filter-branding"><i class="bi bi-youtube"></i> Videos</div>
+            </div>
+          </div>
+
+          <select id="category" class="d-none" required>
             <option value="filter-app">Photos</option>
             <option value="filter-product">Flowers</option>
             <option value="filter-branding">Videos</option>
@@ -411,6 +517,56 @@
   const videoGroup = document.getElementById('videoInputGroup');
   const fileInput = document.getElementById('fileInput');
   const youtubeInput = document.getElementById('youtubeInput');
+
+  // ==========================================
+  // CUSTOM DROPDOWN KATEGORI
+  // ==========================================
+  // <select id="category"> tetap ada (disembunyikan) sebagai sumber value
+  // yang dipakai kode lain (categorySelect.value, event 'change', dst),
+  // biar logic upload gak perlu diubah. Dropdown yang kelihatan cuma UI-nya.
+  const customSelect = document.getElementById('categoryCustomSelect');
+  const customTrigger = document.getElementById('categoryTrigger');
+  const customSelectedLabel = customTrigger.querySelector('.custom-select-selected');
+  const customOptions = document.getElementById('categoryOptions');
+  const customOptionEls = customOptions.querySelectorAll('.custom-select-option');
+
+  function syncCustomSelectLabel() {
+    const opt = customOptions.querySelector(`.custom-select-option[data-value="${categorySelect.value}"]`);
+    if (opt) customSelectedLabel.innerHTML = opt.innerHTML;
+  }
+
+  function resetCustomSelectToDefault() {
+    categorySelect.value = 'filter-app';
+    customOptionEls.forEach((o) => o.classList.toggle('is-selected', o.dataset.value === 'filter-app'));
+    syncCustomSelectLabel();
+  }
+
+  customTrigger.addEventListener('click', () => {
+    customSelect.classList.toggle('open');
+  });
+
+  customOptionEls.forEach((opt) => {
+    opt.addEventListener('click', () => {
+      const value = opt.dataset.value;
+
+      customOptionEls.forEach((o) => o.classList.remove('is-selected'));
+      opt.classList.add('is-selected');
+      syncCustomSelectLabel();
+      customSelect.classList.remove('open');
+
+      if (categorySelect.value !== value) {
+        categorySelect.value = value;
+        categorySelect.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+
+  // Tutup dropdown kalau klik di luar area-nya
+  document.addEventListener('click', (e) => {
+    if (!customSelect.contains(e.target)) {
+      customSelect.classList.remove('open');
+    }
+  });
 
   // ==========================================
   // PREVIEW FOTO & PILIH THUMBNAIL MANUAL
@@ -680,6 +836,7 @@
       photoGroup.classList.remove('d-none');
       videoGroup.classList.add('d-none');
       resetPhotoPreview();
+      resetCustomSelectToDefault();
 
       // Refresh daftar kenangan di tab kategori yang baru saja diupload,
       // biar item baru langsung kelihatan. Tab lain ditandai "belum
