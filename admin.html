@@ -377,6 +377,12 @@
     }
 
     .gallery-tab-pane.d-none { display: none; }
+
+    /* Efek blur pada backdrop modal SweetAlert2 */
+.swal-blur-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
   </style>
 </head>
 <body>
@@ -494,7 +500,7 @@
   // ==========================================
   const ADMIN_PASSWORD = '123'; // Ubah kata sandi sesuai kebutuhan Anda
 
-  async function checkPassword() {
+async function checkPassword() {
     const { value: password } = await Swal.fire({
       title: 'Akses Terproteksi',
       text: 'Masukkan Kata Sandi untuk Mengakses Halaman Admin',
@@ -502,10 +508,17 @@
       inputPlaceholder: 'Masukkan Kata Sandi...',
       allowOutsideClick: false,
       allowEscapeKey: false,
+      // Efek gelap semi-transparan + Blur latar belakang
+      backdrop: `
+        rgba(15, 23, 42, 0.85)
+        left top
+        no-repeat
+      `,
       confirmButtonText: 'Masuk',
       confirmButtonColor: '#e7c9a9',
       customClass: {
-        confirmButton: 'text-dark fw-bold'
+        confirmButton: 'text-dark fw-bold',
+        container: 'swal-blur-backdrop'
       },
       inputValidator: (value) => {
         if (!value) {
