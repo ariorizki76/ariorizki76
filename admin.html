@@ -490,7 +490,45 @@
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // ==========================================
-  // NOTIFIKASI (SweetAlert2) — dipakai buat semua notif berhasil/gagal
+  // PROTEKSI KATA SANDI HALAMAN
+  // ==========================================
+  const ADMIN_PASSWORD = '123'; // Ubah kata sandi sesuai kebutuhan Anda
+
+  async function checkPassword() {
+    const { value: password } = await Swal.fire({
+      title: 'Akses Terproteksi',
+      text: 'Masukkan Kata Sandi untuk Mengakses Halaman Admin',
+      input: 'password',
+      inputPlaceholder: 'Masukkan Kata Sandi...',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      confirmButtonText: 'Masuk',
+      confirmButtonColor: '#e7c9a9',
+      customClass: {
+        confirmButton: 'text-dark fw-bold'
+      },
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Kata sandi tidak boleh kosong!';
+        }
+        if (value !== ADMIN_PASSWORD) {
+          return 'Kata sandi salah!';
+        }
+      }
+    });
+
+    if (password === ADMIN_PASSWORD) {
+      notifSukses('Akses Diterima! Selamat datang.');
+    }
+  }
+
+  // Jalankan verifikasi password langsung saat halaman selesai dimuat
+  document.addEventListener('DOMContentLoaded', () => {
+    checkPassword();
+  });
+
+  // ==========================================
+  // NOTIFIKASI (SweetAlert2)
   // ==========================================
   const Toast = Swal.mixin({
     toast: true,
@@ -521,9 +559,6 @@
   // ==========================================
   // CUSTOM DROPDOWN KATEGORI
   // ==========================================
-  // <select id="category"> tetap ada (disembunyikan) sebagai sumber value
-  // yang dipakai kode lain (categorySelect.value, event 'change', dst),
-  // biar logic upload gak perlu diubah. Dropdown yang kelihatan cuma UI-nya.
   const customSelect = document.getElementById('categoryCustomSelect');
   const customTrigger = document.getElementById('categoryTrigger');
   const customSelectedLabel = customTrigger.querySelector('.custom-select-selected');
@@ -553,10 +588,6 @@
       opt.classList.add('is-selected');
       customSelect.classList.remove('open');
 
-      // Update dulu value select aslinya, baru sinkronkan labelnya --
-      // syncCustomSelectLabel() baca dari categorySelect.value, jadi kalau
-      // dipanggil sebelum value di-update, label yang tampil selalu 1
-      // langkah ketinggalan (delay).
       const isChanged = categorySelect.value !== value;
       categorySelect.value = value;
       syncCustomSelectLabel();
@@ -567,7 +598,6 @@
     });
   });
 
-  // Tutup dropdown kalau klik di luar area-nya
   document.addEventListener('click', (e) => {
     if (!customSelect.contains(e.target)) {
       customSelect.classList.remove('open');
@@ -577,12 +607,6 @@
   // ==========================================
   // PREVIEW FOTO & PILIH THUMBNAIL MANUAL
   // ==========================================
-  // Urutan fileInput.files TIDAK selalu sama dengan urutan klik user
-  // di dialog pilih file (browser/OS kadang urutkan sendiri, misal
-  // alfabetis). Makanya "foto pertama jadi thumbnail" suka meleset.
-  // Solusinya: user pilih sendiri foto mana yang jadi thumbnail lewat
-  // preview grid ini, lalu foto itu yang dipindah ke posisi pertama
-  // pas upload -- bukan mengandalkan urutan file asli.
   const photoPreviewGrid = document.getElementById('photoPreviewGrid');
   let selectedThumbIndex = 0;
   let previewObjectUrls = [];
@@ -638,7 +662,6 @@
     renderPhotoPreview();
   });
 
-  // Toggle Input & Validasi Required Dinamis
   categorySelect.addEventListener('change', () => {
     if (categorySelect.value === 'filter-branding') {
       photoGroup.classList.add('d-none');
@@ -657,7 +680,6 @@
     }
   });
 
-  // Format Tanggal ke Bahasa Indonesia
   function formatDateToIndonesian(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
@@ -672,15 +694,11 @@
   // ==========================================
   // KOMPRES FOTO SEBELUM UPLOAD
   // ==========================================
-  // Resize ke max lebar 1600px + convert ke JPEG kualitas 0.82.
-  // Tujuannya biar file yang naik ke Storage (dan didownload tiap
-  // orang buka galeri) jauh lebih kecil dari foto asli HP (bisa 3-8MB).
   const COMPRESS_MAX_WIDTH = 1600;
   const COMPRESS_QUALITY = 0.82;
 
   function compressImage(file, maxWidth = COMPRESS_MAX_WIDTH, quality = COMPRESS_QUALITY) {
     return new Promise((resolve) => {
-      // GIF (animasi) jangan dikompres, biar animasinya gak hilang
       if (file.type === 'image/gif') {
         resolve(file);
         return;
@@ -708,7 +726,6 @@
 
         canvas.toBlob((blob) => {
           if (!blob) {
-            // Kalau gagal compress, tetap lanjut upload file aslinya
             resolve(file);
             return;
           }
@@ -724,7 +741,6 @@
 
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        // Kalau gambarnya gagal dibaca, tetap lanjut upload file aslinya
         resolve(file);
       };
 
@@ -732,7 +748,6 @@
     });
   }
 
-  // Ekstrak ID YouTube yang Lebih Valid & Aman
   function extractYoutubeId(url) {
     if (!url) return null;
     const cleanUrl = url.trim();
@@ -745,7 +760,6 @@
     return cleanUrl.length === 11 ? cleanUrl : null;
   }
 
-  // Handle Submit Form
   document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnSubmit');
@@ -766,7 +780,6 @@
       const titleDate = formatDateToIndonesian(rawDate);
 
       if (category === 'filter-branding') {
-        // PROSES UNTUK VIDEO
         const ytInputVal = youtubeInput.value;
         const youtubeId = extractYoutubeId(ytInputVal);
 
@@ -784,12 +797,9 @@
         if (error) throw error;
 
       } else {
-        // PROSES UNTUK FOTO / BUNGA
         const files = Array.from(fileInput.files);
         if (files.length === 0) throw new Error('Pilih minimal 1 foto!');
 
-        // Pindahkan foto yang ditandai user (⭐) ke posisi paling depan,
-        // karena images[0] itulah yang jadi Thumbnail di halaman utama.
         if (selectedThumbIndex > 0 && selectedThumbIndex < files.length) {
           const [thumbFile] = files.splice(selectedThumbIndex, 1);
           files.unshift(thumbFile);
@@ -798,7 +808,6 @@
         const imageUrls = [];
 
         for (let file of files) {
-          // Validasi Ukuran File (Maksimal 5MB) — dicek dari file asli sebelum dikompres
           if (file.size > 5 * 1024 * 1024) {
             throw new Error(`File ${file.name} terlalu besar (maksimal 5MB)!`);
           }
@@ -836,7 +845,6 @@
       notifSukses('Yeayy! berhasil diupload! 🎉');
       document.getElementById('uploadForm').reset();
       
-      // Reset state input required
       fileInput.setAttribute('required', 'true');
       youtubeInput.removeAttribute('required');
       photoGroup.classList.remove('d-none');
@@ -844,9 +852,6 @@
       resetPhotoPreview();
       resetCustomSelectToDefault();
 
-      // Refresh daftar kenangan di tab kategori yang baru saja diupload,
-      // biar item baru langsung kelihatan. Tab lain ditandai "belum
-      // termuat" supaya di-refresh otomatis begitu user membukanya.
       refreshGalleryAfterUpload(category);
 
     } catch (err) {
@@ -859,14 +864,11 @@
   });
 
   // ==========================================
-  // KELOLA / HAPUS KENANGAN (3 tab, pagination per tab)
+  // KELOLA / HAPUS KENANGAN
   // ==========================================
   const GALLERY_ADMIN_PAGE_SIZE = 5;
   const GALLERY_TYPES = ['filter-app', 'filter-product', 'filter-branding'];
 
-  // Tiap tab/kategori punya cursor pagination sendiri-sendiri, sama seperti
-  // gallerySupaState di index.html -- supaya "Muat Lebih Banyak" di tab
-  // Photos gak nyampur sama tab Flowers/Videos.
   const adminGalleryState = {
     'filter-app':      { offset: 0, hasMore: true, loading: false, loaded: false },
     'filter-product':  { offset: 0, hasMore: true, loading: false, loaded: false },
@@ -893,9 +895,6 @@
     return 'bi-bookmark';
   }
 
-  // URL publik Supabase Storage formatnya:
-  // {SUPABASE_URL}/storage/v1/object/public/photos/<namafile>
-  // Ekstrak nama file-nya biar bisa dihapus dari bucket.
   function extractStoragePath(url) {
     const marker = '/storage/v1/object/public/photos/';
     const idx = url.indexOf(marker);
@@ -951,16 +950,12 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Memuat...';
         await loadGalleryList(type, false);
-        // renderLoadMoreBtn() sudah dipanggil ulang di dalam loadGalleryList,
-        // jadi tombol lama ini otomatis kepindah ke bawah / kehapus kalau habis.
       });
 
       listEl.insertAdjacentElement('afterend', btn);
     }
   }
 
-  // reset = true  → mulai dari halaman pertama tab ini (load awal / abis upload / pertama kali tab dibuka)
-  // reset = false → lanjut fetch halaman berikutnya tab ini (tombol "Muat Lebih Banyak")
   async function loadGalleryList(type, reset = true) {
     const state = adminGalleryState[type];
     const listEl = galleryListElFor(type);
@@ -1038,12 +1033,8 @@
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
 
     try {
-      // 1. Hapus file foto di Storage (kalau kategorinya foto/bunga)
       if (Array.isArray(item.images) && item.images.length > 0) {
         const paths = item.images.map(extractStoragePath).filter(p => p !== null);
-
-        console.log('[Hapus Storage] URL asli di kolom images:', item.images);
-        console.log('[Hapus Storage] Path yang mau dihapus dari bucket "photos":', paths);
 
         if (paths.length > 0) {
           const { data: removedData, error: storageError } = await supabaseClient
@@ -1051,23 +1042,15 @@
             .from('photos')
             .remove(paths);
 
-          console.log('[Hapus Storage] Respon remove():', { removedData, storageError });
-
-          // Kalau gagal hapus file storage (misal sudah kehapus manual
-          // sebelumnya), jangan hentikan proses -- yang penting datanya
-          // tetap terhapus dari tabel. Tapi tetap kasih tahu di layar
-          // biar ketahuan kalau ada yang nyangkut.
           if (storageError) {
             console.error('Gagal hapus file storage:', storageError);
             notifGagal('Baris terhapus, tapi file di storage gagal dihapus: ' + storageError.message);
           } else if (!removedData || removedData.length < paths.length) {
-            console.warn('[Hapus Storage] Jumlah file yang kehapus (' + (removedData ? removedData.length : 0) + ') lebih sedikit dari yang diminta (' + paths.length + '). Kemungkinan path di bucket beda sama yang di kolom images.');
-            notifGagal('Baris terhapus, tapi sebagian/semua file foto tidak ketemu di storage (cek console).');
+            notifGagal('Baris terhapus, tapi sebagian/semua file foto tidak ketemu di storage.');
           }
         }
       }
 
-      // 2. Hapus baris di tabel gallery
       const { error: deleteError } = await supabaseClient
         .from('gallery')
         .delete()
@@ -1075,12 +1058,7 @@
 
       if (deleteError) throw deleteError;
 
-      // 3. Hapus dari tampilan tanpa perlu reload semua data
       row.remove();
-
-      // Geser cursor pagination tab ini mundur 1 supaya "Muat Lebih Banyak"
-      // berikutnya gak nyasar/skip baris gara-gara satu baris barusan
-      // kehapus dari tabel.
       state.offset = Math.max(0, state.offset - 1);
 
       if (listEl.children.length === 0 && !state.hasMore) {
@@ -1097,9 +1075,6 @@
     }
   }
 
-  // ==========================================
-  // SWITCH TAB
-  // ==========================================
   function switchGalleryTab(type) {
     activeGalleryTab = type;
 
@@ -1111,8 +1086,6 @@
       pane.classList.toggle('d-none', pane.dataset.type !== type);
     });
 
-    // Lazy load: baru fetch data tab ini kalau belum pernah dimuat
-    // (atau sengaja ditandai stale, misal abis upload ke kategori lain).
     if (!adminGalleryState[type].loaded) {
       loadGalleryList(type, true);
     }
@@ -1124,18 +1097,12 @@
     switchGalleryTab(tabBtn.dataset.type);
   });
 
-  // Dipanggil setelah upload berhasil. Tab kategori yang baru saja diupload
-  // langsung di-refresh dari halaman pertama (kalau dia yang lagi aktif),
-  // tab lain cukup ditandai "belum termuat" biar di-refetch pas dibuka.
   function refreshGalleryAfterUpload(uploadedType) {
-    // Hanya tab kategori yang baru saja diupload yang datanya berubah.
     adminGalleryState[uploadedType].loaded = false;
 
     if (activeGalleryTab === uploadedType) {
       loadGalleryList(uploadedType, true);
     }
-    // Kalau tab kategori itu lagi gak aktif, biarkan loaded=false --
-    // otomatis di-refetch dari halaman pertama pas user membuka tabnya.
   }
 
   loadGalleryList('filter-app', true);
